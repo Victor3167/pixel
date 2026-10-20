@@ -119,11 +119,11 @@ export default function App() {
   const [geminiModel, setGeminiModel] = useState<GeminiModel>(() => {
     try {
       const saved = localStorage.getItem(MODEL_STORAGE)
-      if (saved === 'gemini-2.5-pro' || saved === 'gemini-2.5-flash') return saved
+      if (saved === 'gemini-3.5-flash' || saved === 'gemini-3.8-flash' || saved === 'gemini-flash-latest') return saved
     } catch {
       /* ignore */
     }
-    return 'gemini-2.5-flash'
+    return 'gemini-3.5-flash'
   })
   const [aiRunning, setAiRunning] = useState<boolean>(false)
   const [aiError, setAiError] = useState<string | null>(null)

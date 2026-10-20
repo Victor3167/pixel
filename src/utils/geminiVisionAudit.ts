@@ -14,8 +14,8 @@ export const API_KEY_STORAGE = 'pixelaudit.geminiApiKey'
 export const MODEL_STORAGE = 'pixelaudit.geminiModel'
 
 export const GEMINI_MODELS: { value: GeminiModel; label: string; hint: string }[] = [
-  { value: 'gemini-2.5-pro', label: '2.5 Pro', hint: 'Most precise' },
-  { value: 'gemini-2.5-flash', label: '2.5 Flash', hint: 'Fastest' },
+  { value: 'gemini-3.5-flash', label: '3.5 Flash', hint: 'Fast, multimodal & stable (Recommended)' },
+  { value: 'gemini-3.8-flash', label: '3.8 Flash', hint: 'Latest generation' },
 ]
 
 /** Key persisted by the user in localStorage ('' when none). */
@@ -119,42 +119,72 @@ export async function runVisionAudit(input: VisionAuditInput): Promise<AiRawIssu
     (input.matchScore !== null ? `pixelmatch score: ${input.matchScore.toFixed(2)}%. ` : '') +
     'Audit the implementation against the design.'
 
-  const response = await ai.models.generateContent({
-    model: input.model,
-    contents: [
-      {
-        role: 'user',
-        parts: [
-          { text: context },
-          { text: 'Image 1 - DESIGN (reference):' },
-          png(input.designBase64),
-          { text: 'Image 2 - IMPLEMENTATION (live screenshot):' },
-          png(input.implBase64),
-          { text: 'Image 3 - DIFF (magenta = mismatching pixels):' },
-          png(input.diffBase64),
+  // Candidate models: primary chosen model first, followed by stable fallbacks
+  const candidateModels = [
+    input.model,
+    'gemini-3.5-flash',
+    'gemini-3.8-flash',
+    'gemini-flash-latest',
+  ].filter((m, i, arr) => arr.indexOf(m) === i)
+
+  let lastError: unknown = null
+  for (const modelName of candidateModels) {
+    try {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: context },
+              { text: 'Image 1 - DESIGN (reference):' },
+              png(input.designBase64),
+              { text: 'Image 2 - IMPLEMENTATION (live screenshot):' },
+              png(input.implBase64),
+              { text: 'Image 3 - DIFF (magenta = mismatching pixels):' },
+              png(input.diffBase64),
+            ],
+          },
         ],
-      },
-    ],
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      responseMimeType: 'application/json',
-      responseSchema: ISSUE_RESPONSE_SCHEMA,
-      temperature: 0.2,
-    },
-  })
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          responseMimeType: 'application/json',
+          responseSchema: ISSUE_RESPONSE_SCHEMA,
+          temperature: 0.2,
+        },
+      })
 
-  const text = response.text
-  if (!text) throw new Error('Gemini returned an empty response.')
+      const text = response.text
+      if (!text) throw new Error('Gemini returned an empty response.')
 
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
-  } catch {
-    throw new Error('Gemini returned malformed JSON.')
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(text)
+      } catch {
+        throw new Error('Gemini returned malformed JSON.')
+      }
+      if (!Array.isArray(parsed)) throw new Error('Gemini response was not an array of issues.')
+
+      return parsed.filter(isRawIssue)
+    } catch (err: unknown) {
+      lastError = err
+      const msg = String(err).toLowerCase()
+      // If model is retired (404), unavailable/high demand (503), or quota reached on pro, try next candidate
+      if (
+        msg.includes('404') ||
+        msg.includes('not found') ||
+        msg.includes('no longer available') ||
+        msg.includes('503') ||
+        msg.includes('unavailable') ||
+        msg.includes('rate-limit')
+      ) {
+        continue
+      }
+      throw err
+    }
   }
-  if (!Array.isArray(parsed)) throw new Error('Gemini response was not an array of issues.')
 
-  return parsed.filter(isRawIssue)
+  throw lastError ?? new Error('Gemini returned an error during audit.')
 }
 
 function isRawIssue(value: unknown): value is AiRawIssue {

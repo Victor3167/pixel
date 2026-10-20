@@ -113,7 +113,12 @@ export type ToolMode = 'inspect' | 'measure' | 'annotate'
 
 export type DiffBase = 'design' | 'impl' | 'none'
 
-export type GeminiModel = 'gemini-2.5-pro' | 'gemini-2.5-flash'
+export type GeminiModel =
+  | 'gemini-3.5-flash'
+  | 'gemini-3.8-flash'
+  | 'gemini-flash-latest'
+  | 'gemini-2.5-pro'
+  | 'gemini-2.5-flash'
 
 export type PasteTarget = 'design' | 'impl'
 
