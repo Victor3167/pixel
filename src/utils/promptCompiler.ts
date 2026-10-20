@@ -1,6 +1,6 @@
-import type { AuditIssue, DesignScale, Rect } from '../types/audit'
-import { formatNumber } from './geometry'
+import { CATEGORY_LABELS_PT, SEVERITY_LABELS_PT, type AuditIssue, type DesignScale, type Rect } from '../types/audit'
 import { describeDomNode, selectorHint } from './domMatch'
+import { formatNumber } from './geometry'
 
 export interface PromptContext {
   projectName: string
@@ -33,7 +33,9 @@ function rectLine(rect: Rect, scale: number): string {
 }
 
 function categoryLabel(issue: AuditIssue): string {
-  return `${issue.category} · ${issue.severity} · ${issue.source === 'ai' ? 'AI detected' : 'manual'}`
+  const cat = CATEGORY_LABELS_PT[issue.category] ?? issue.category
+  const sev = SEVERITY_LABELS_PT[issue.severity] ?? issue.severity
+  return `${cat} · ${sev} · ${issue.source === 'ai' ? 'Detectado por IA' : 'Manual'}`
 }
 
 function oneLine(text: string): string {

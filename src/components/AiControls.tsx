@@ -23,7 +23,7 @@ export function AiControls({ apiKey, onApiKey, envKeyAvailable, model, onModel, 
     <div className="space-y-2.5 border-b border-white/[0.06] p-4">
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-300">
-          <Sparkles size={12} /> AI Vision Audit
+          <Sparkles size={12} className="text-neon-400" /> Auditoria Visual com IA
         </h2>
         <Segmented
           id="model-select"
@@ -41,13 +41,13 @@ export function AiControls({ apiKey, onApiKey, envKeyAvailable, model, onModel, 
           value={apiKey}
           autoComplete="off"
           spellCheck={false}
-          placeholder={envKeyAvailable ? 'Using VITE_GEMINI_API_KEY' : 'GEMINI_API_KEY'}
-          className="pr-8 pl-7 font-mono"
+          placeholder={envKeyAvailable ? 'Usando chave do .env' : 'Cole sua Gemini API Key aqui'}
+          className="pr-8 pl-7 font-mono text-[11px]"
           onChange={(e) => onApiKey(e.target.value)}
         />
         <button
           type="button"
-          aria-label={reveal ? 'Hide API key' : 'Show API key'}
+          aria-label={reveal ? 'Ocultar chave' : 'Mostrar chave'}
           className="absolute top-1/2 right-2 -translate-y-1/2 text-ink-400 hover:text-white"
           onClick={() => setReveal((v) => !v)}
         >
@@ -59,17 +59,21 @@ export function AiControls({ apiKey, onApiKey, envKeyAvailable, model, onModel, 
         id="ai-audit-button"
         variant="neon"
         size="lg"
-        className="w-full"
+        className="w-full font-bold shadow-md"
         icon={<Sparkles size={15} />}
         shortcut="G"
         loading={running}
         disabled={!canRun}
         onClick={onRun}
       >
-        {running ? 'Gemini is auditing…' : 'AI Auto-Detect Bugs'}
+        {running ? 'IA analisando divergências…' : 'Detectar Diferenças com IA'}
       </Button>
 
-      {!canRun && !running && <p className="text-[10.5px] text-ink-400">Needs a Design, an Implementation and a Gemini API key.</p>}
+      {!canRun && !running && (
+        <p className="text-[10.5px] text-ink-400">
+          Carregue o Design, a Implementação e informe a chave Gemini para iniciar.
+        </p>
+      )}
 
       {error && (
         <div role="alert" className="flex gap-2 rounded-lg border border-rose-400/30 bg-rose-400/10 p-2.5 text-[11.5px] text-rose-300">

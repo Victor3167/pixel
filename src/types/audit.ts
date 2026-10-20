@@ -193,9 +193,30 @@ export const ISSUE_CATEGORIES = [
 
 export type IssueCategory = (typeof ISSUE_CATEGORIES)[number]
 
+export const CATEGORY_LABELS_PT: Record<IssueCategory, string> = {
+  spacing: 'Espaçamento',
+  size: 'Dimensão / Tamanho',
+  alignment: 'Alinhamento',
+  typography: 'Tipografia / Texto',
+  color: 'Cor / Contraste',
+  'border-radius': 'Raio de Borda (Radius)',
+  'border-shadow': 'Borda e Sombra',
+  'missing-element': 'Elemento Faltando',
+  'extra-element': 'Elemento Extra',
+  'image-icon': 'Imagem / Ícone',
+  layout: 'Estrutura / Layout',
+  other: 'Outro',
+}
+
 export const ISSUE_SEVERITIES = ['critical', 'major', 'minor'] as const
 
 export type IssueSeverity = (typeof ISSUE_SEVERITIES)[number]
+
+export const SEVERITY_LABELS_PT: Record<IssueSeverity, string> = {
+  critical: 'CRÍTICO',
+  major: 'GRAVE',
+  minor: 'LEVE',
+}
 
 export interface AuditIssue {
   id: string

@@ -555,9 +555,12 @@ export default function App() {
       setSelectedIssueId(id)
       setRightTab('issues')
       const target = issues.find((i) => i.id === id)
-      if (target) setFocusRequest({ rect: target.rect, nonce: Date.now() })
+      if (target) {
+        if (inspectionMode === 'live') setInspectionMode('diff')
+        setFocusRequest({ rect: target.rect, nonce: Date.now() })
+      }
     },
-    [issues],
+    [issues, inspectionMode],
   )
 
   /* ---------------------------- Prompt Compilation -------------------------- */
@@ -806,10 +809,18 @@ export default function App() {
               issues={resolvedIssues}
               selectedId={selectedIssueId}
               designScale={designScale}
+              design={design}
+              impl={impl}
+              diff={diffResult}
+              layout={layout}
               onSelect={handleSelectIssue}
               onChange={handleUpdateIssue}
               onDelete={handleDeleteIssue}
               onClear={handleClearIssues}
+              onFocusOnCanvas={(rect) => {
+                if (inspectionMode === 'live') setInspectionMode('diff')
+                setFocusRequest({ rect, nonce: Date.now() })
+              }}
             />
           }
           prompt={

@@ -64,11 +64,13 @@ export const ISSUE_RESPONSE_SCHEMA: Schema = {
       severity: { type: Type.STRING, enum: [...ISSUE_SEVERITIES] },
       description: {
         type: Type.STRING,
-        description: 'What differs between Design and Implementation, with measurable values.',
+        description:
+          'Descrição detalhada em Português do Brasil (pt-BR) do que está diferente entre o Design e a Implementação, citando valores mensuráveis.',
       },
       expectedFix: {
         type: Type.STRING,
-        description: 'Concrete CSS / markup change that makes the Implementation match the Design.',
+        description:
+          'Instrução prática e acionável em Português do Brasil (pt-BR) de alteração em CSS ou marcação HTML/JSX para os desenvolvedores.',
       },
     },
     required: ['box_2d', 'category', 'severity', 'description', 'expectedFix'],
@@ -76,21 +78,26 @@ export const ISSUE_RESPONSE_SCHEMA: Schema = {
   },
 }
 
-const SYSTEM_INSTRUCTION = `You are a meticulous pixel-perfect UI QA engineer performing a visual regression audit.
-You receive three images of IDENTICAL dimensions and an identical coordinate space:
-  1. DESIGN: the Designer's reference (source of truth).
-  2. IMPLEMENTATION: a screenshot of the live front-end.
-  3. DIFF: the dimmed design with every mismatching pixel painted neon magenta (computed by pixelmatch).
+const SYSTEM_INSTRUCTION = `Você é um engenheiro sênior de QA e front-end meticuloso realizando uma auditoria de regressão visual pixel-perfect.
+Você recebe três imagens com dimensões IDÊNTICAS e mesmo espaço de coordenadas:
+  1. DESIGN: a referência do Designer / Figma (fonte da verdade).
+  2. IMPLEMENTATION: screenshot da aplicação web em execução.
+  3. DIFF: o design escurecido com cada pixel divergente destacado em magenta neon (gerado pelo pixelmatch).
 
-Rules:
-- Report only REAL visual discrepancies a developer must fix: spacing, size, alignment, typography, colour, border radius, borders / shadows, missing or extra elements, icons / images, layout.
-- Use the DIFF image to locate regions precisely, then compare DESIGN vs IMPLEMENTATION to understand the cause.
-- Ignore sub-pixel anti-aliasing noise and isolated single-pixel differences.
-- Merge diffs that share a single root cause into ONE issue with a box covering the affected element.
-- Boxes must be tight: [ymin, xmin, ymax, xmax] with integers on a 0-1000 scale relative to the full image height / width.
-- Quote measurable values whenever possible (px offsets, font sizes, HEX colours, radii) using the pixel scale of the images.
-- "expectedFix" must be an actionable CSS or markup instruction.
-- Order issues by severity (critical first). Return at most 25 issues. Return an empty array if the images match.`
+IDIOMA OBRIGATÓRIO (MANDATÓRIO):
+- TODOS os textos dos campos "description" e "expectedFix" DEVEM ser redigidos obrigatoriamente em Português do Brasil (pt-BR) fluente, técnico e claro para desenvolvedores front-end.
+- Exemplo de "description": "O banner principal exibe a imagem de vinho em vez da garrafa de azeite do design", "O botão 'COMPRE AGORA' possui cor de fundo #693119 quando deveria ser #E79307", "Modal de cookies indesejado cobrindo o canto inferior esquerdo".
+- Exemplo de "expectedFix": "Ajustar background-color para #E79307 e padding para 12px 24px", "Definir o slide padrão ativo do componente de carrossel para o banner de azeite", "Fechar ou ocultar o modal de consentimento de cookies no estado inicial".
+
+Regras da Auditoria:
+- Relate apenas discrepâncias visuais REAIS que um desenvolvedor precisa corrigir: espaçamentos, tamanhos, alinhamento, tipografia, cores, border-radius, sombras/bordas, elementos ausentes ou extras, ícones/imagens e estrutura de layout.
+- Use a imagem DIFF para localizar as regiões com precisão milimétrica, e compare DESIGN vs IMPLEMENTATION para identificar a causa exata.
+- Ignore ruídos de anti-aliasing sub-pixel e pixels isolados sem impacto visual.
+- Agrupe diferenças com a mesma causa raiz em UMA única ocorrência delimitando o elemento afetado.
+- Bounding boxes devem ser ajustadas: [ymin, xmin, ymax, xmax] com inteiros na escala 0-1000 relativa à imagem total.
+- Cite valores mensuráveis sempre que possível (offsets em px, tamanhos de fonte, cores HEX, raios de borda).
+- "expectedFix" deve ser uma instrução prática de código (CSS ou marcação).
+- Ordene por severidade (critical primeiro). Retorne no máximo 25 issues. Retorne array vazio se as imagens forem idênticas.`
 
 export interface VisionAuditInput {
   apiKey: string

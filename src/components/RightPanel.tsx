@@ -15,8 +15,8 @@ interface RightPanelProps {
 
 export function RightPanel({ tab, onTab, issueCount, aiControls, issues, prompt }: RightPanelProps) {
   const tabs: { id: RightTab; label: string; icon: ReactNode }[] = [
-    { id: 'issues', label: 'Issues', icon: <ListChecks size={13} /> },
-    { id: 'prompt', label: 'Prompt', icon: <ClipboardList size={13} /> },
+    { id: 'issues', label: 'Divergências', icon: <ListChecks size={13} /> },
+    { id: 'prompt', label: 'Prompt de Correção', icon: <ClipboardList size={13} /> },
   ]
 
   return (
