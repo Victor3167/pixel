@@ -122,18 +122,12 @@ function validateRequest(input: unknown): CaptureRequest {
     throw new HttpError(400, 'Only http(s) URLs can be captured')
   }
 
-  const width = body.width === undefined ? 1280 : Number(body.width)
-  const height = body.height === undefined ? 800 : Number(body.height)
-  const deviceScaleFactor = body.deviceScaleFactor === undefined ? 1 : Number(body.deviceScaleFactor)
-  if (!Number.isInteger(width) || width < 1 || width > 8192) {
-    throw new HttpError(400, '"width" must be an integer between 1 and 8192')
-  }
-  if (!Number.isInteger(height) || height < 1 || height > 8192) {
-    throw new HttpError(400, '"height" must be an integer between 1 and 8192')
-  }
-  if (!Number.isFinite(deviceScaleFactor) || deviceScaleFactor < 0.25 || deviceScaleFactor > 4) {
-    throw new HttpError(400, '"deviceScaleFactor" must be between 0.25 and 4')
-  }
+  const rawW = Number(body.width)
+  const width = Number.isInteger(rawW) && rawW >= 1 && rawW <= 8192 ? rawW : 1280
+  const rawH = Number(body.height)
+  const height = Number.isInteger(rawH) && rawH >= 1 && rawH <= 8192 ? rawH : 800
+  const rawDsf = Number(body.deviceScaleFactor)
+  const deviceScaleFactor = Number.isFinite(rawDsf) && rawDsf >= 0.25 && rawDsf <= 4 ? rawDsf : 1
 
   const waitForMs = body.waitForMs === undefined ? 0 : Number(body.waitForMs)
   if (!Number.isFinite(waitForMs) || waitForMs < 0 || waitForMs > 30_000) {

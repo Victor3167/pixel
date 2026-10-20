@@ -271,14 +271,19 @@ export default function App() {
     setDesignCaptureWarnings([])
 
     try {
+      const manualW = Number(designCaptureSettings.manualWidth)
+      const manualH = Number(designCaptureSettings.manualHeight)
+      const manualDsf = Number(designCaptureSettings.manualDeviceScaleFactor)
+
       const response = await captureLocalhost({
         url,
-        width: designCaptureSettings.manualWidth,
-        height: designCaptureSettings.manualHeight,
-        deviceScaleFactor: designCaptureSettings.manualDeviceScaleFactor,
+        width: Number.isInteger(manualW) && manualW >= 1 ? manualW : 1280,
+        height: Number.isInteger(manualH) && manualH >= 1 ? manualH : 800,
+        deviceScaleFactor: Number.isFinite(manualDsf) && manualDsf >= 0.25 ? manualDsf : 1,
         selector: designCaptureSettings.selector.trim() || undefined,
-        waitForMs: designCaptureSettings.waitForMs,
-        hideScrollbars: designCaptureSettings.hideScrollbars,
+        waitForMs: designCaptureSettings.waitForMs || 0,
+        hideScrollbars: designCaptureSettings.hideScrollbars !== false,
+        localStorage: designCaptureSettings.localStorage,
       })
 
       const loaded = await loadImageFromUrl(
@@ -334,14 +339,19 @@ export default function App() {
       )
 
       try {
+        const width = Number.isInteger(currentResolved.width) && currentResolved.width >= 1 ? currentResolved.width : 1280
+        const height = Number.isInteger(currentResolved.height) && currentResolved.height >= 1 ? currentResolved.height : 800
+        const dsf = Number.isFinite(currentResolved.deviceScaleFactor) ? currentResolved.deviceScaleFactor : 1
+
         const response = await captureLocalhost({
           url,
-          width: currentResolved.width,
-          height: currentResolved.height,
-          deviceScaleFactor: currentResolved.deviceScaleFactor,
+          width,
+          height,
+          deviceScaleFactor: dsf,
           selector: implCaptureSettings.selector.trim() || undefined,
-          waitForMs: implCaptureSettings.waitForMs,
-          hideScrollbars: implCaptureSettings.hideScrollbars,
+          waitForMs: implCaptureSettings.waitForMs || 0,
+          hideScrollbars: implCaptureSettings.hideScrollbars !== false,
+          localStorage: implCaptureSettings.localStorage,
         })
 
         const loaded = await loadImageFromUrl(
