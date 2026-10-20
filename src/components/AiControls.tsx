@@ -70,8 +70,16 @@ export function AiControls({ apiKey, onApiKey, envKeyAvailable, model, onModel, 
       </Button>
 
       {!canRun && !running && (
-        <p className="text-[10.5px] text-ink-400">
-          Carregue o Design, a Implementação e informe a chave Gemini para iniciar.
+        <p className="text-[10.5px] text-amber-300/90">
+          {!apiKey.trim() && !envKeyAvailable
+            ? 'Cole sua chave Gemini API acima para habilitar a auditoria.'
+            : 'Defina a URL de referência e de implementação para auditar.'}
+        </p>
+      )}
+
+      {canRun && !running && (
+        <p className="text-[10px] text-neon-300/90">
+          ✨ Pronto para auditar! Clique no botão para comparar e detectar divergências.
         </p>
       )}
 

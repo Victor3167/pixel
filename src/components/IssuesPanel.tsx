@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Bug, Crosshair, Eye, Trash } from 'lucide-react'
+import { Bug, Crosshair, Eye, Sparkles, Trash } from 'lucide-react'
 import {
   CATEGORY_LABELS_PT,
   ISSUE_CATEGORIES,
@@ -18,7 +18,7 @@ import { cn } from '../utils/cn'
 import { describeDomNode, selectorHint } from '../utils/domMatch'
 import { formatNumber } from '../utils/geometry'
 import { IssueCropComparison } from './IssueCropComparison'
-import { ColorSwatch, IconButton } from './ui'
+import { Button, ColorSwatch, IconButton } from './ui'
 
 const SEVERITY_STYLE: Record<IssueSeverity, string> = {
   critical: 'bg-rose-400/15 text-rose-300',
@@ -269,6 +269,8 @@ interface IssuesPanelProps {
   onDelete: (id: string) => void
   onClear: () => void
   onFocusOnCanvas?: (rect: Rect) => void
+  onRunAi?: () => void
+  aiRunning?: boolean
 }
 
 export function IssuesPanel({
@@ -284,18 +286,31 @@ export function IssuesPanel({
   onDelete,
   onClear,
   onFocusOnCanvas,
+  onRunAi,
+  aiRunning,
 }: IssuesPanelProps) {
   if (issues.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center animate-fade-in">
         <div className="flex size-12 items-center justify-center rounded-2xl bg-white/[0.04] ring-1 ring-white/10">
           <Bug size={22} className="text-ink-300" />
         </div>
-        <p className="text-[12.5px] font-medium text-ink-100">Nenhuma divergência registrada</p>
-        <p className="text-[11.5px] leading-relaxed text-ink-400">
-          Pressione <b className="text-neon-300">G</b> para auditar com a IA, ou pressione <b className="text-iris-300">A</b> e arraste
-          uma caixa retangular na tela para marcar manualmente.
+        <p className="text-[12.5px] font-semibold text-ink-100">Nenhuma divergência registrada ainda</p>
+        <p className="text-[11.5px] leading-relaxed text-ink-400 max-w-xs">
+          A auditoria com IA ainda não foi executada nesta tela. Clique no botão abaixo para capturar e comparar o design contra a sua loja:
         </p>
+        {onRunAi && (
+          <Button
+            variant="neon"
+            size="md"
+            loading={aiRunning}
+            onClick={onRunAi}
+            icon={<Sparkles size={14} />}
+            className="mt-1 font-bold shadow-md hover:scale-[1.02] transition-transform"
+          >
+            {aiRunning ? 'Auditoria em andamento…' : 'Detectar Diferenças com IA'}
+          </Button>
+        )}
       </div>
     )
   }

@@ -404,15 +404,16 @@ export default function App() {
 
   /* ------------------------------- AI Vision Audit -------------------------- */
   const activeApiKey = resolveApiKey(storedApiKey)
-  const canRunAi = Boolean(design && impl && activeApiKey)
+  const canRunAi = Boolean(
+    activeApiKey && (
+      (design && impl) ||
+      (designCaptureSettings.url.trim() && implCaptureSettings.url.trim())
+    ),
+  )
 
   const runAiAudit = useCallback(async () => {
-    if (!design || !impl) {
-      addToast('info', 'Load both Design and Implementation before running AI audit.')
-      return
-    }
     if (!activeApiKey) {
-      addToast('error', 'Please enter your Gemini API key in the AI panel.')
+      addToast('error', 'Por favor, informe sua chave Gemini API no painel.')
       setRightTab('issues')
       return
     }
@@ -422,13 +423,42 @@ export default function App() {
     setAiError(null)
 
     try {
+      let activeDesign = design
+      let activeImpl = impl
+
+      // If images haven't been captured yet (e.g. user is in Live Mode), auto-capture both pages!
+      if (!activeDesign || !activeImpl) {
+        if (!designCaptureSettings.url.trim() || !implCaptureSettings.url.trim()) {
+          addToast('info', 'Carregue as imagens ou informe as URLs de referência e da sua loja local.')
+          setAiRunning(false)
+          return
+        }
+        addToast('info', 'Capturando ambas as páginas para auditoria com IA...')
+        setCapturingBoth(true)
+        const capDesign = await runCaptureDesign()
+        if (capDesign) {
+          const capImpl = await runCaptureImpl(capDesign)
+          activeDesign = capDesign
+          activeImpl = capImpl
+        }
+        setCapturingBoth(false)
+        if (!activeDesign || !activeImpl) {
+          addToast('error', 'Falha ao capturar as páginas. Verifique se os sites estão respondendo.')
+          setAiRunning(false)
+          return
+        }
+      }
+
+      // Compute comparison layout
+      const currentLayout = computeLayout(activeDesign, activeImpl, offset)
+
       // 1. Design 1:1 in comparison layout
-      const designCanvas = rasterizeLayer(design.element, layout.width, layout.height, 0, 0)
+      const designCanvas = rasterizeLayer(activeDesign.element, currentLayout.width, currentLayout.height, 0, 0)
       // 2. Implementation 1:1 with offset
-      const implCanvas = rasterizeLayer(impl.element, layout.width, layout.height, layout.offsetX, layout.offsetY)
+      const implCanvas = rasterizeLayer(activeImpl.element, currentLayout.width, currentLayout.height, currentLayout.offsetX, currentLayout.offsetY)
       // 3. Diff composite (dimmed design + neon magenta mask)
-      const currentDiff = diffResult ?? computeDiff({ design, impl, layout, threshold, includeAA })
-      const diffCanvas = buildDiffComposite(design, currentDiff, layout)
+      const currentDiff = diffResult ?? computeDiff({ design: activeDesign, impl: activeImpl, layout: currentLayout, threshold, includeAA })
+      const diffCanvas = buildDiffComposite(activeDesign, currentDiff, currentLayout)
 
       const designB64 = canvasToBase64Png(designCanvas)
       const implB64 = canvasToBase64Png(implCanvas)
@@ -440,14 +470,14 @@ export default function App() {
         designBase64: designB64,
         implBase64: implB64,
         diffBase64: diffB64,
-        width: layout.width,
-        height: layout.height,
+        width: currentLayout.width,
+        height: currentLayout.height,
         designScale,
         matchScore: currentDiff.matchScore,
       })
 
       const newIssues: AuditIssue[] = rawIssues.map((raw, idx) => {
-        const rect = boxToPixels(raw.box_2d, layout.width, layout.height)
+        const rect = boxToPixels(raw.box_2d, currentLayout.width, currentLayout.height)
         const refData = crossReferenceRect(rect, crossRefContext)
         return {
           id: `ai-${Date.now()}-${idx + 1}`,
@@ -464,12 +494,13 @@ export default function App() {
 
       setIssues(newIssues)
       setRightTab('issues')
+      setInspectionMode('diff')
       if (newIssues.length > 0) {
         setSelectedIssueId(newIssues[0].id)
         setFocusRequest({ rect: newIssues[0].rect, nonce: Date.now() })
-        addToast('success', `AI detected ${newIssues.length} issue${newIssues.length === 1 ? '' : 's'}`)
+        addToast('success', `${newIssues.length} divergências visuais detectadas pela IA!`)
       } else {
-        addToast('success', 'Gemini found 0 discrepancies! Implementation matches reference.')
+        addToast('info', 'Auditoria concluída! Nenhuma divergência visual detectada pelo Gemini.')
       }
     } catch (err) {
       const message = describeGeminiError(err)
@@ -479,11 +510,15 @@ export default function App() {
       setAiRunning(false)
     }
   }, [
-    design,
-    impl,
     activeApiKey,
     aiRunning,
-    layout,
+    design,
+    impl,
+    designCaptureSettings.url,
+    implCaptureSettings.url,
+    runCaptureDesign,
+    runCaptureImpl,
+    offset,
     diffResult,
     threshold,
     includeAA,
@@ -492,6 +527,16 @@ export default function App() {
     crossRefContext,
     addToast,
   ])
+
+  const handleGeneratePrompt = useCallback(async () => {
+    if (issues.length === 0) {
+      addToast('info', 'Iniciando auditoria para compilar o prompt de correção...')
+      await runAiAudit()
+    } else {
+      addToast('success', 'Prompt de correção atualizado!')
+    }
+    setRightTab('prompt')
+  }, [issues.length, runAiAudit, addToast])
 
   /* ---------------------------- Demo Scenario ------------------------------- */
   const handleLoadDemo = useCallback(async () => {
@@ -817,6 +862,8 @@ export default function App() {
               onChange={handleUpdateIssue}
               onDelete={handleDeleteIssue}
               onClear={handleClearIssues}
+              onRunAi={runAiAudit}
+              aiRunning={aiRunning}
               onFocusOnCanvas={(rect) => {
                 if (inspectionMode === 'live') setInspectionMode('diff')
                 setFocusRequest({ rect, nonce: Date.now() })
@@ -832,6 +879,8 @@ export default function App() {
               prompt={compiledPrompt}
               issueCount={resolvedIssues.length}
               canExportImage={design !== null || impl !== null}
+              aiRunning={aiRunning}
+              onGeneratePrompt={handleGeneratePrompt}
               onCopy={handleCopyPrompt}
               onDownloadPng={handleDownloadPng}
               onDownloadMarkdown={handleDownloadMarkdown}
