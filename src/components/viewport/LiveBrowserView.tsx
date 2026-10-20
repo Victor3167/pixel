@@ -1,12 +1,20 @@
 import {
-  ArrowRight,
+  ArrowDown,
+  ArrowUp,
   Camera,
+  ChevronDown,
+  ChevronUp,
   Columns2,
+  Compass,
   ExternalLink,
   KeyRound,
   Layers,
+  Lock,
+  MousePointer,
+  MoveVertical,
   RefreshCw,
   SplitSquareVertical,
+  Unlock,
   Zap,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -24,6 +32,14 @@ const COMMON_ROUTES = [
   { label: 'Produtos', path: '/produtos' },
   { label: 'Carrinho', path: '/carrinho' },
   { label: 'Minha Conta', path: '/minha-conta' },
+]
+
+const SCROLL_PRESETS = [
+  { label: 'Topo', pct: 0 },
+  { label: '25%', pct: 0.25 },
+  { label: '50%', pct: 0.5 },
+  { label: '75%', pct: 0.75 },
+  { label: 'Fim', pct: 1 },
 ]
 
 interface LiveBrowserViewProps {
@@ -61,10 +77,20 @@ export function LiveBrowserView({
 }: LiveBrowserViewProps) {
   /* ------------------------------- State ----------------------------------- */
   // Active page to interact with ("escolher qual página mexer")
-  const [activeTarget, setActiveTarget] = useState<ActiveControlTarget>('a')
+  const [activeTarget, setActiveTarget] = useState<ActiveControlTarget>('both')
   // Comparison layout ("um em cima do outro para usar as funcionalidades de comparação")
   const [mode, setMode] = useState<LiveComparisonMode>('split')
   const [devicePreset, setDevicePreset] = useState<DevicePreset>('fluid')
+
+  // Synchronized scrolling engine ("os dois lados tem que acompanhar")
+  const [syncScroll, setSyncScroll] = useState<boolean>(true)
+  const [scrollY, setScrollY] = useState<number>(0)
+  const [offsetY, setOffsetY] = useState<number>(0) // Sub-pixel / calibration offset for Page B
+  const [virtualHeight, setVirtualHeight] = useState<number>(5000) // Virtual height of content
+  const maxScroll = Math.max(0, virtualHeight - 800)
+
+  // Wheel sync overlay toggle
+  const [wheelCaptureMode, setWheelCaptureMode] = useState<boolean>(false)
 
   // Onion skin controls
   const [onionOpacity, setOnionOpacity] = useState<number>(0.5)
@@ -78,9 +104,13 @@ export function LiveBrowserView({
   const isDraggingSplit = useRef(false)
   const splitContainerRef = useRef<HTMLDivElement>(null)
 
+  // Master scrollbar dragging
+  const isDraggingScrollbar = useRef(false)
+  const scrollbarTrackRef = useRef<HTMLDivElement>(null)
+
   // Parsed URLs & current paths
   const parsedA = useMemo(
-    () => parseUrl(designSettings.url, 'https://lojasilvasalesdesign.bisws.com.br'),
+    () => parseUrl(designSettings.url, 'http://cerealista-design.43.153.43.193.sslip.io'),
     [designSettings.url],
   )
   const parsedB = useMemo(
@@ -106,6 +136,30 @@ export function LiveBrowserView({
     [parsedB.origin, pathB],
   )
 
+  /* -------------------------- Synchronized Scroll -------------------------- */
+  const changeScroll = useCallback(
+    (delta: number) => {
+      setScrollY((prev) => Math.max(0, Math.min(maxScroll, prev + delta)))
+    },
+    [maxScroll],
+  )
+
+  const scrollToPercent = useCallback(
+    (pct: number) => {
+      setScrollY(Math.round(maxScroll * pct))
+    },
+    [maxScroll],
+  )
+
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      if (!syncScroll) return
+      e.preventDefault()
+      changeScroll(e.deltaY * 0.85)
+    },
+    [syncScroll, changeScroll],
+  )
+
   /* -------------------------- Location Syncing ----------------------------- */
   /** Syncs location from active page to the other, or from A to B */
   const handleSyncLocation = useCallback(
@@ -128,6 +182,7 @@ export function LiveBrowserView({
         setRefreshKeyA((k) => k + 1)
         onAddToast('success', `Localização sincronizada da Página B para A (${nextPath})`)
       }
+      setScrollY(0) // Reset scroll so both start at top
     },
     [activeTarget, pathA, pathB, parsedA.origin, parsedB.origin, onUpdateDesignSettings, onUpdateImplSettings, onAddToast],
   )
@@ -148,6 +203,7 @@ export function LiveBrowserView({
 
       setRefreshKeyA((k) => k + 1)
       setRefreshKeyB((k) => k + 1)
+      setScrollY(0) // Reset scroll so both align at top
       onAddToast('info', `Navegando ambas as páginas para: ${formatted}`)
     },
     [parsedA.origin, parsedB.origin, onUpdateDesignSettings, onUpdateImplSettings, onAddToast],
@@ -176,7 +232,7 @@ export function LiveBrowserView({
     }
   }, [onUpdateDesignSettings, onAddToast])
 
-  /* -------------------------- Keyboard Shortcuts --------------------------- */
+  /* -------------------------- Keyboard Navigation -------------------------- */
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
@@ -186,6 +242,40 @@ export function LiveBrowserView({
         e.preventDefault()
         if (!e.repeat) setBlinkShowsDesign(true)
         return
+      }
+
+      // Arrow keys / PageUp / PageDown for synchronized scrolling
+      if (syncScroll) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault()
+          changeScroll(60)
+          return
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault()
+          changeScroll(-60)
+          return
+        }
+        if (e.key === 'PageDown') {
+          e.preventDefault()
+          changeScroll(400)
+          return
+        }
+        if (e.key === 'PageUp') {
+          e.preventDefault()
+          changeScroll(-400)
+          return
+        }
+        if (e.key === 'Home') {
+          e.preventDefault()
+          setScrollY(0)
+          return
+        }
+        if (e.key === 'End') {
+          e.preventDefault()
+          setScrollY(maxScroll)
+          return
+        }
       }
 
       // Alt+A: focus A
@@ -220,7 +310,7 @@ export function LiveBrowserView({
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
     }
-  }, [mode, handleSyncLocation, onAddToast])
+  }, [mode, syncScroll, maxScroll, changeScroll, handleSyncLocation, onAddToast])
 
   /* -------------------------- Split Drag Handlers -------------------------- */
   const handleSplitPointerDown = (e: React.PointerEvent) => {
@@ -239,6 +329,29 @@ export function LiveBrowserView({
     isDraggingSplit.current = false
   }
 
+  /* -------------------------- Master Scrollbar Drag ------------------------- */
+  const handleScrollbarMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!scrollbarTrackRef.current) return
+      if (!isDraggingScrollbar.current && e.buttons === 0) return
+      const rect = scrollbarTrackRef.current.getBoundingClientRect()
+      const relativeY = Math.min(rect.height, Math.max(0, e.clientY - rect.top))
+      const pct = relativeY / rect.height
+      setScrollY(Math.round(maxScroll * pct))
+    },
+    [maxScroll],
+  )
+
+  const handleScrollbarPointerDown = (e: React.PointerEvent) => {
+    isDraggingScrollbar.current = true
+    e.currentTarget.setPointerCapture(e.pointerId)
+    handleScrollbarMove(e)
+  }
+
+  const handleScrollbarPointerUp = () => {
+    isDraggingScrollbar.current = false
+  }
+
   /* -------------------------- Frame Container Sizing ----------------------- */
   const frameContainerStyle = useMemo(() => {
     if (devicePreset === '1440') return { maxWidth: '1440px', margin: '0 auto' }
@@ -249,13 +362,14 @@ export function LiveBrowserView({
   }, [devicePreset])
 
   const isStackedMode = mode === 'split' || mode === 'onion' || mode === 'blink'
+  const scrollPct = maxScroll > 0 ? (scrollY / maxScroll) * 100 : 0
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col bg-ink-950 font-sans text-ink-100">
+    <div className="relative flex min-h-0 flex-1 flex-col bg-ink-950 font-sans text-ink-100 select-none">
       {/* ==================================================================== */}
       {/*  Top Live Control Bar                                                */}
       {/* ==================================================================== */}
-      <div className="z-30 flex flex-wrap items-center justify-between gap-2.5 border-b border-white/[0.08] bg-ink-900/95 px-4 py-2.5 backdrop-blur-md shadow-lg">
+      <div className="z-30 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] bg-ink-900/95 px-4 py-2 backdrop-blur-md shadow-lg">
         {/* Left: Active Page Selector ("Escolher qual página mexer") */}
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-semibold tracking-wider text-ink-300 uppercase">
@@ -296,22 +410,20 @@ export function LiveBrowserView({
               <Kbd className="text-[9px]">Alt+B</Kbd>
             </button>
 
-            {mode === 'side' && (
-              <button
-                type="button"
-                id="control-target-both"
-                onClick={() => setActiveTarget('both')}
-                title="Interagir com ambas as páginas lado a lado"
-                className={cn(
-                  'flex h-7.5 items-center gap-1.5 rounded-lg px-2.5 text-[11.5px] font-medium transition-all duration-150',
-                  activeTarget === 'both'
-                    ? 'bg-gradient-to-r from-iris-500 to-neon-500 text-white font-semibold shadow-md'
-                    : 'text-ink-200 hover:bg-white/[0.07] hover:text-white',
-                )}
-              >
-                <span>Ambas</span>
-              </button>
-            )}
+            <button
+              type="button"
+              id="control-target-both"
+              onClick={() => setActiveTarget('both')}
+              title="Interagir com ambas as páginas simultaneamente"
+              className={cn(
+                'flex h-7.5 items-center gap-1.5 rounded-lg px-2.5 text-[11.5px] font-medium transition-all duration-150',
+                activeTarget === 'both'
+                  ? 'bg-gradient-to-r from-iris-500 to-neon-500 text-white font-semibold shadow-md'
+                  : 'text-ink-200 hover:bg-white/[0.07] hover:text-white',
+              )}
+            >
+              <span>Ambas</span>
+            </button>
           </div>
         </div>
 
@@ -325,7 +437,7 @@ export function LiveBrowserView({
               type="button"
               id="live-mode-split"
               onClick={() => setMode('split')}
-              title="Cortina Divisória: Páginas sobrepostas com divisor deslizante"
+              title="Cortina Divisória: Páginas sobrepostas com divisor deslizante sincronizado"
               className={cn(
                 'flex h-7.5 items-center gap-1.5 rounded-lg px-2.5 text-[11.5px] font-medium transition-all',
                 mode === 'split' ? 'bg-iris-500 text-white shadow-md' : 'text-ink-300 hover:text-white hover:bg-white/[0.07]',
@@ -405,133 +517,90 @@ export function LiveBrowserView({
           </div>
         </div>
 
-        {/* Center-Right: Location Synchronizer ("btn de sincronizar a localização") */}
+        {/* Center-Right: Synchronized Scroll Controller ("os dois lados tem que acompanhar") */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            id="toggle-sync-scroll-btn"
+            onClick={() => setSyncScroll((s) => !s)}
+            title={syncScroll ? 'Rolagem sincronizada ativa: ambos os lados rolam juntos' : 'Rolagem desincronizada'}
+            className={cn(
+              'flex h-7.5 items-center gap-1.5 rounded-xl px-2.5 text-[11px] font-bold transition-all',
+              syncScroll
+                ? 'bg-neon-500/20 text-neon-300 ring-1 ring-neon-500/50 shadow-[0_0_12px_rgba(20,241,149,0.3)]'
+                : 'bg-white/5 text-ink-400 hover:text-white',
+            )}
+          >
+            {syncScroll ? <Lock size={12} className="text-neon-400" /> : <Unlock size={12} />}
+            <span>Rolagem Sincronizada</span>
+          </button>
+
+          {/* Quick Scroll Steppers */}
+          {syncScroll && (
+            <div className="flex items-center gap-0.5 rounded-lg bg-black/40 p-0.5 ring-1 ring-white/10">
+              <button
+                type="button"
+                onClick={() => setScrollY(0)}
+                title="Rolar ambas as páginas para o topo"
+                className="rounded px-1.5 py-0.5 text-[10px] text-ink-300 hover:bg-white/10 hover:text-white"
+              >
+                Topo
+              </button>
+              <button
+                type="button"
+                onClick={() => changeScroll(-300)}
+                title="Subir 300px em ambas as páginas"
+                className="rounded p-1 text-ink-300 hover:bg-white/10 hover:text-white"
+              >
+                <ChevronUp size={13} />
+              </button>
+              <span className="font-mono text-[10.5px] px-1 text-neon-300">
+                {Math.round(scrollY)}px
+              </span>
+              <button
+                type="button"
+                onClick={() => changeScroll(300)}
+                title="Descer 300px em ambas as páginas"
+                className="rounded p-1 text-ink-300 hover:bg-white/10 hover:text-white"
+              >
+                <ChevronDown size={13} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Right: Location Sync & Snapshot */}
         <div className="flex items-center gap-2">
           <Button
             id="sync-location-btn"
             variant="neon"
             size="sm"
             onClick={() => handleSyncLocation()}
-            icon={<RefreshCw size={13} className="text-black" />}
+            icon={<RefreshCw size={12} className="text-black" />}
             title="Sincronizar rota entre a página ativa e a outra [Alt+S]"
-            className="font-bold shadow-[0_0_16px_rgba(20,241,149,0.35)] hover:scale-[1.02]"
+            className="font-bold shadow-md hover:scale-[1.02]"
           >
-            Sincronizar Localização
+            Sincronizar Rota
           </Button>
 
-          {/* Quick directional sync */}
-          <div className="flex items-center gap-0.5 rounded-lg bg-black/40 p-0.5 ring-1 ring-white/10">
-            <button
-              type="button"
-              onClick={() => handleSyncLocation('a-to-b')}
-              title="Copiar rota da Página A para B"
-              className="flex h-7 items-center gap-1 rounded px-2 text-[10.5px] font-medium text-ink-200 hover:bg-white/10 hover:text-white"
-            >
-              <span className="text-iris-400">A</span>
-              <ArrowRight size={10} />
-              <span className="text-neon-400">B</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSyncLocation('b-to-a')}
-              title="Copiar rota da Página B para A"
-              className="flex h-7 items-center gap-1 rounded px-2 text-[10.5px] font-medium text-ink-200 hover:bg-white/10 hover:text-white"
-            >
-              <span className="text-neon-400">B</span>
-              <ArrowRight size={10} />
-              <span className="text-iris-400">A</span>
-            </button>
-          </div>
-
-          {/* Shared Route Bar */}
-          <div className="flex items-center rounded-lg bg-black/50 ring-1 ring-white/10 px-2 py-0.5 focus-within:ring-iris-500/50">
-            <span className="font-mono text-[10.5px] text-ink-400 select-none mr-1.5">Rota:</span>
-            <input
-              type="text"
-              id="shared-route-input"
-              value={sharedRouteInput}
-              onChange={(e) => setSharedRouteInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleNavigateBoth(sharedRouteInput)
-              }}
-              placeholder="/produtos, /carrinho..."
-              className="w-28 xl:w-36 bg-transparent font-mono text-[11.5px] text-white outline-none placeholder:text-ink-500"
-            />
-            <button
-              type="button"
-              onClick={() => handleNavigateBoth(sharedRouteInput)}
-              className="ml-1 rounded px-1.5 py-0.5 text-[10.5px] font-medium text-iris-300 hover:bg-iris-500/20 hover:text-white"
-            >
-              Ir
-            </button>
-          </div>
-
-          {/* Quick Route Preset Chips */}
-          <div className="hidden 2xl:flex items-center gap-1">
-            {COMMON_ROUTES.map((route) => (
-              <button
-                key={route.path}
-                type="button"
-                onClick={() => handleNavigateBoth(route.path)}
-                className={cn(
-                  'rounded-md px-1.5 py-0.5 text-[10.5px] transition-colors',
-                  sharedRouteInput === route.path
-                    ? 'bg-iris-500/30 text-iris-200 ring-1 ring-iris-500/40'
-                    : 'text-ink-300 hover:bg-white/[0.06] hover:text-white',
-                )}
-              >
-                {route.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Right: Quick Login & Snapshot */}
-        <div className="flex items-center gap-2">
           <button
             type="button"
             id="quick-login-option-a"
             onClick={handleAutoLoginOptionA}
             title="Injeta token de autenticação diretamente na Opção A para acessar o protótipo imediatamente"
-            className="flex h-7.5 items-center gap-1.5 rounded-xl border border-iris-500/40 bg-iris-500/15 px-2.5 text-[11px] font-medium text-iris-200 hover:bg-iris-500/25 hover:text-white transition-all shadow-sm"
+            className="flex h-7.5 items-center gap-1.5 rounded-xl border border-iris-500/40 bg-iris-500/15 px-2 text-[11px] font-medium text-iris-200 hover:bg-iris-500/25 hover:text-white transition-all shadow-sm"
           >
             <KeyRound size={12} className="text-iris-400" />
             <span className="hidden xl:inline">Auto-Login A</span>
           </button>
 
-          {/* Device Presets */}
-          <div className="hidden 2xl:flex items-center gap-1 rounded-xl bg-black/30 p-0.5 ring-1 ring-white/10">
-            <button
-              type="button"
-              onClick={() => setDevicePreset('fluid')}
-              className={cn('rounded px-1.5 py-0.5 text-[10px]', devicePreset === 'fluid' ? 'bg-white/15 text-white' : 'text-ink-400')}
-            >
-              100%
-            </button>
-            <button
-              type="button"
-              onClick={() => setDevicePreset('1440')}
-              className={cn('rounded px-1.5 py-0.5 text-[10px]', devicePreset === '1440' ? 'bg-white/15 text-white' : 'text-ink-400')}
-            >
-              1440
-            </button>
-            <button
-              type="button"
-              onClick={() => setDevicePreset('768')}
-              className={cn('rounded px-1.5 py-0.5 text-[10px]', devicePreset === '768' ? 'bg-white/15 text-white' : 'text-ink-400')}
-            >
-              768
-            </button>
-          </div>
-
-          {/* Action: Snapshot live views to diff */}
           <Button
             id="capture-live-both-btn"
             variant="neon"
             size="sm"
             onClick={onCaptureBoth}
             loading={capturingBoth}
-            icon={<Camera size={13} className="text-black" />}
+            icon={<Camera size={12} className="text-black" />}
             title="Capturar o estado atual de ambas as páginas para comparar no Pixel Diff e AI"
             className="font-bold shadow-[0_0_20px_rgba(20,241,149,0.35)]"
           >
@@ -541,15 +610,123 @@ export function LiveBrowserView({
       </div>
 
       {/* ==================================================================== */}
+      {/*  Shared Navigation & Viewport Bar ("Os dois lados tem que acompanhar")*/}
+      {/* ==================================================================== */}
+      <div
+        onWheel={handleWheel}
+        className="z-25 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] bg-ink-900/90 px-4 py-1.5 text-[11px] backdrop-blur-md"
+      >
+        {/* Left: Synchronized Route Navigator */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-neon-300 flex items-center gap-1">
+            <Compass size={12} />
+            <span>Navegar em Ambas:</span>
+          </span>
+          <div className="flex items-center rounded-lg bg-black/60 px-2 py-0.5 ring-1 ring-white/10 max-w-xs">
+            <span className="font-mono text-ink-500 mr-1">/</span>
+            <input
+              type="text"
+              value={sharedRouteInput.startsWith('/') ? sharedRouteInput.slice(1) : sharedRouteInput}
+              onChange={(e) => setSharedRouteInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleNavigateBoth(sharedRouteInput)
+                }
+              }}
+              placeholder="ex: login, produtos..."
+              className="w-36 bg-transparent font-mono text-[11px] text-white placeholder-ink-500 outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => handleNavigateBoth(sharedRouteInput)}
+              className="ml-1 rounded bg-neon-500/20 px-1.5 py-0.5 text-[10px] font-bold text-neon-300 hover:bg-neon-500/30 transition-colors"
+            >
+              Ir
+            </button>
+          </div>
+
+          {/* Quick Route Chips */}
+          <div className="flex items-center gap-1">
+            {COMMON_ROUTES.map((route) => (
+              <button
+                key={route.path}
+                type="button"
+                onClick={() => handleNavigateBoth(route.path)}
+                className={cn(
+                  'rounded-lg px-2 py-0.5 text-[10.5px] transition-all',
+                  pathA === route.path && pathB === route.path
+                    ? 'bg-neon-500/20 text-neon-300 ring-1 ring-neon-500/40 font-semibold'
+                    : 'bg-white/[0.04] text-ink-300 hover:bg-white/[0.08] hover:text-white',
+                )}
+              >
+                {route.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Right: Device Preset & Virtual Height Selectors */}
+        <div className="flex items-center gap-3">
+          {/* Device Width */}
+          <div className="flex items-center gap-1">
+            <span className="text-ink-400">Largura:</span>
+            <div className="flex items-center rounded-lg bg-black/40 p-0.5 ring-1 ring-white/10">
+              {(
+                [
+                  { id: 'fluid', label: 'Fluido' },
+                  { id: '1440', label: '1440' },
+                  { id: '1280', label: '1280' },
+                  { id: '768', label: '768' },
+                  { id: '390', label: '390' },
+                ] as const
+              ).map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => setDevicePreset(preset.id)}
+                  className={cn(
+                    'rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors',
+                    devicePreset === preset.id
+                      ? 'bg-iris-500 text-white font-bold'
+                      : 'text-ink-400 hover:text-white hover:bg-white/5',
+                  )}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Content Height Controller */}
+          <div className="flex items-center gap-1">
+            <span className="text-ink-400">Altura:</span>
+            <select
+              value={virtualHeight}
+              onChange={(e) => setVirtualHeight(Number(e.target.value))}
+              className="rounded bg-black/50 px-1.5 py-0.5 font-mono text-[10px] text-ink-200 ring-1 ring-white/10 outline-none"
+            >
+              <option value={3000}>3000px</option>
+              <option value={5000}>5000px (Padrão)</option>
+              <option value={8000}>8000px</option>
+              <option value={12000}>12000px</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* ==================================================================== */}
       {/*  Contextual Controls Bar (Onion, Blink, Curtain)                     */}
       {/* ==================================================================== */}
       {isStackedMode && (
-        <div className="z-20 flex items-center justify-between border-b border-white/[0.06] bg-ink-900/80 px-4 py-1.5 text-[11.5px] backdrop-blur-sm animate-slide-up">
+        <div
+          onWheel={handleWheel}
+          className="z-20 flex flex-wrap items-center justify-between border-b border-white/[0.06] bg-ink-900/80 px-4 py-1 text-[11.5px] backdrop-blur-sm"
+        >
           {/* Mode-specific tools */}
           <div className="flex items-center gap-4">
             {mode === 'onion' && (
               <>
-                <span className="font-semibold text-iris-300">Modo Onion Skin ao Vivo:</span>
+                <span className="font-semibold text-iris-300">Onion Skin ao Vivo:</span>
                 <div className="flex items-center gap-2">
                   <span className="text-ink-300">Opacidade:</span>
                   <input
@@ -559,7 +736,7 @@ export function LiveBrowserView({
                     step="0.05"
                     value={onionOpacity}
                     onChange={(e) => setOnionOpacity(Number(e.target.value))}
-                    className="h-1.5 w-28 accent-iris-500 cursor-pointer"
+                    className="h-1.5 w-24 accent-iris-500 cursor-pointer"
                   />
                   <span className="font-mono text-white text-[11px]">{Math.round(onionOpacity * 100)}%</span>
                 </div>
@@ -567,33 +744,23 @@ export function LiveBrowserView({
                   id="live-blend-diff"
                   checked={blendDifference}
                   onChange={setBlendDifference}
-                  label="Modo Diferença (Difference Blend)"
+                  label="Modo Diferença"
                 />
               </>
             )}
 
             {mode === 'blink' && (
               <div className="flex items-center gap-3">
-                <span className="font-semibold text-iris-300">Modo Blink ao Vivo:</span>
+                <span className="font-semibold text-iris-300">Blink ao Vivo:</span>
                 <span className="text-ink-300">
-                  Segure a tecla <Kbd>Espaço</Kbd> para ver a <strong>Página A</strong> (solte para ver a <strong>Página B</strong>)
+                  Segure <Kbd>Espaço</Kbd> para ver a <strong>Página A</strong> (solte para ver a <strong>Página B</strong>)
                 </span>
-                <button
-                  type="button"
-                  onMouseDown={() => setBlinkShowsDesign(true)}
-                  onMouseUp={() => setBlinkShowsDesign(false)}
-                  onTouchStart={() => setBlinkShowsDesign(true)}
-                  onTouchEnd={() => setBlinkShowsDesign(false)}
-                  className="rounded-lg bg-iris-500/20 px-3 py-1 font-medium text-iris-300 ring-1 ring-iris-500/40 hover:bg-iris-500/30"
-                >
-                  Segure aqui para Alternar
-                </button>
                 <span
                   className={cn(
-                    'rounded-full px-2.5 py-0.5 text-[10.5px] font-bold uppercase transition-colors',
+                    'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase transition-colors',
                     blinkShowsDesign
-                      ? 'bg-iris-500 text-white shadow-[0_0_12px_rgba(99,84,240,0.6)]'
-                      : 'bg-neon-500 text-black shadow-[0_0_12px_rgba(20,241,149,0.6)]',
+                      ? 'bg-iris-500 text-white shadow-md'
+                      : 'bg-neon-500 text-black shadow-md',
                   )}
                 >
                   Exibindo: {blinkShowsDesign ? 'A: Referência' : 'B: Localhost'}
@@ -605,7 +772,7 @@ export function LiveBrowserView({
               <div className="flex items-center gap-3">
                 <span className="font-semibold text-iris-300">Cortina Dividida ao Vivo:</span>
                 <span className="text-ink-300">
-                  Arraste a linha vertical para revelar: <strong className="text-iris-300">Esquerda = Página A</strong> |{' '}
+                  <strong className="text-iris-300">Esquerda = Página A</strong> |{' '}
                   <strong className="text-neon-300">Direita = Página B</strong>
                 </span>
                 <button
@@ -619,31 +786,59 @@ export function LiveBrowserView({
             )}
           </div>
 
-          {/* Active interaction indicator */}
+          {/* Sub-pixel Calibration Offset Y (Fine alignment between Page A and B) */}
           <div className="flex items-center gap-2">
-            <span className="text-ink-400">Interação ativa:</span>
-            <span
-              className={cn(
-                'rounded-lg px-2 py-0.5 text-[11px] font-semibold flex items-center gap-1.5',
-                activeTarget === 'a'
-                  ? 'bg-iris-500/20 text-iris-300 ring-1 ring-iris-500/40'
-                  : 'bg-neon-500/20 text-neon-300 ring-1 ring-neon-500/40',
+            <span className="text-ink-400 text-[10.5px]">Ajustar Offset Vertical B:</span>
+            <div className="flex items-center gap-1 rounded bg-black/40 px-1 py-0.5 ring-1 ring-white/10">
+              <button
+                type="button"
+                onClick={() => setOffsetY((y) => y - 5)}
+                title="Subir Página B em 5px"
+                className="rounded px-1 text-ink-300 hover:bg-white/10 hover:text-white text-[10px]"
+              >
+                -5px
+              </button>
+              <span className="font-mono text-[10.5px] text-iris-300 px-1">
+                {offsetY > 0 ? `+${offsetY}` : offsetY}px
+              </span>
+              <button
+                type="button"
+                onClick={() => setOffsetY((y) => y + 5)}
+                title="Descer Página B em 5px"
+                className="rounded px-1 text-ink-300 hover:bg-white/10 hover:text-white text-[10px]"
+              >
+                +5px
+              </button>
+              {offsetY !== 0 && (
+                <button
+                  type="button"
+                  onClick={() => setOffsetY(0)}
+                  title="Zerar calibração"
+                  className="text-ink-400 hover:text-white text-[9px] px-1"
+                >
+                  0
+                </button>
               )}
-            >
-              <span
-                className={cn(
-                  'size-1.5 rounded-full animate-pulse',
-                  activeTarget === 'a' ? 'bg-iris-400' : 'bg-neon-400',
-                )}
-              />
-              {activeTarget === 'a' ? 'Página A (Referência)' : 'Página B (Localhost)'}
-            </span>
+            </div>
+
+            {/* Wheel mode catcher toggle */}
             <button
               type="button"
-              onClick={() => setActiveTarget(activeTarget === 'a' ? 'b' : 'a')}
-              className="text-[10px] text-iris-300 hover:text-white underline underline-offset-2 ml-1"
+              onClick={() => setWheelCaptureMode((w) => !w)}
+              title={
+                wheelCaptureMode
+                  ? 'Modo Rolar: o mouse rola as duas telas juntas em qualquer ponto'
+                  : 'Modo Clicar: o mouse clica e digita nas páginas'
+              }
+              className={cn(
+                'flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10.5px] font-medium transition-all ml-2',
+                wheelCaptureMode
+                  ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/50'
+                  : 'bg-white/5 text-ink-300 hover:text-white',
+              )}
             >
-              Alternar
+              {wheelCaptureMode ? <MoveVertical size={11} /> : <MousePointer size={11} />}
+              <span>{wheelCaptureMode ? 'Modo Rolar (Wheel)' : 'Modo Clicar'}</span>
             </button>
           </div>
         </div>
@@ -652,7 +847,10 @@ export function LiveBrowserView({
       {/* ==================================================================== */}
       {/*  Live Viewport (Stacked or Side-by-Side)                             */}
       {/* ==================================================================== */}
-      <div className="relative flex min-h-0 flex-1 overflow-hidden p-2.5 bg-ink-950">
+      <div
+        onWheel={handleWheel}
+        className="relative flex min-h-0 flex-1 overflow-hidden p-2.5 bg-ink-950 gap-2"
+      >
         <div style={frameContainerStyle} className="relative flex size-full flex-col">
           {/* ================================================================ */}
           {/*  STACKED COMPARISON: Split Curtain, Onion Skin, Blink            */}
@@ -663,12 +861,19 @@ export function LiveBrowserView({
               onPointerMove={mode === 'split' ? handleSplitPointerMove : undefined}
               onPointerUp={mode === 'split' ? handleSplitPointerUp : undefined}
               className={cn(
-                'relative flex-1 overflow-hidden rounded-2xl border bg-black shadow-2xl select-none',
-                activeTarget === 'a' ? 'border-iris-500/50 ring-2 ring-iris-500/30' : 'border-neon-500/50 ring-2 ring-neon-500/30',
+                'relative flex-1 overflow-hidden rounded-2xl border bg-black shadow-2xl',
+                activeTarget === 'a'
+                  ? 'border-iris-500/50 ring-2 ring-iris-500/30'
+                  : activeTarget === 'b'
+                    ? 'border-neon-500/50 ring-2 ring-neon-500/30'
+                    : 'border-white/10',
               )}
             >
               {/* Common Window Header for Stacked Mode */}
-              <div className="absolute top-0 inset-x-0 z-30 flex h-9 items-center justify-between border-b border-white/[0.08] bg-ink-900/90 px-3 backdrop-blur-md">
+              <div
+                onWheel={handleWheel}
+                className="absolute top-0 inset-x-0 z-40 flex h-9 items-center justify-between border-b border-white/[0.08] bg-ink-900/90 px-3 backdrop-blur-md"
+              >
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1.5">
                     <span className="size-2.5 rounded-full bg-red-500/70" />
@@ -676,19 +881,20 @@ export function LiveBrowserView({
                     <span className="size-2.5 rounded-full bg-green-500/70" />
                   </div>
                   <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                    {mode === 'split' && 'CORTINA AO VIVO'}
-                    {mode === 'onion' && 'ONION SKIN AO VIVO'}
-                    {mode === 'blink' && 'BLINK AO VIVO'}
+                    {mode === 'split' && 'CORTINA AO VIVO SINCRONIZADA'}
+                    {mode === 'onion' && 'ONION SKIN AO VIVO SINCRONIZADO'}
+                    {mode === 'blink' && 'BLINK AO VIVO SINCRONIZADO'}
                   </span>
                 </div>
 
+                {/* Live URL displays */}
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-[11px] text-iris-300">
+                  <span className="font-mono text-[11px] text-iris-300 truncate max-w-xs">
                     A: {parsedA.origin}
                     {pathA}
                   </span>
                   <span className="text-white/20">|</span>
-                  <span className="font-mono text-[11px] text-neon-300">
+                  <span className="font-mono text-[11px] text-neon-300 truncate max-w-xs">
                     B: {parsedB.origin}
                     {pathB}
                   </span>
@@ -709,23 +915,28 @@ export function LiveBrowserView({
                 </div>
               </div>
 
-              {/* Stacked Frames Container */}
+              {/* Stacked Frames Container with Synchronized Scroll Offset */}
               <div className="absolute inset-0 top-9 bg-white overflow-hidden">
                 {/* ------------------------------------------------------------ */}
-                {/*  FRAME A (Reference)                                         */}
+                {/*  FRAME A (Reference - Left side of curtain)                  */}
                 {/* ------------------------------------------------------------ */}
                 <div
                   style={{
                     position: 'absolute',
                     inset: 0,
+                    width: '100%',
+                    height: syncScroll ? `${virtualHeight}px` : '100%',
+                    transform: syncScroll ? `translateY(-${scrollY}px)` : undefined,
                     zIndex:
                       mode === 'blink'
                         ? blinkShowsDesign
                           ? 20
                           : 5
-                        : activeTarget === 'a'
-                          ? 20
-                          : 10,
+                        : mode === 'split'
+                          ? 10
+                          : activeTarget === 'a'
+                            ? 20
+                            : 10,
                     opacity:
                       mode === 'blink'
                         ? blinkShowsDesign
@@ -735,50 +946,83 @@ export function LiveBrowserView({
                           ? onionOpacity
                           : 1,
                     mixBlendMode: mode === 'onion' && blendDifference ? 'difference' : 'normal',
-                    pointerEvents: activeTarget === 'a' ? 'auto' : 'none',
+                    clipPath: mode === 'split' ? `inset(0 ${100 - splitPos}% 0 0)` : undefined,
+                    pointerEvents:
+                      wheelCaptureMode
+                        ? 'none'
+                        : mode === 'split'
+                          ? 'auto'
+                          : activeTarget === 'a' || activeTarget === 'both'
+                            ? 'auto'
+                            : 'none',
                   }}
-                  className="size-full transition-opacity duration-75"
+                  className="transition-[opacity] duration-75"
                 >
                   <iframe
                     id="live-frame-a"
                     key={refreshKeyA}
                     src={fullUrlA}
                     title="Página A (Referência)"
+                    scrolling={syncScroll ? 'no' : 'auto'}
                     sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
                     className="size-full border-0"
                   />
                 </div>
 
                 {/* ------------------------------------------------------------ */}
-                {/*  FRAME B (Localhost / Implementation)                        */}
+                {/*  FRAME B (Localhost / Right side of curtain)                 */}
                 {/* ------------------------------------------------------------ */}
                 <div
                   style={{
                     position: 'absolute',
                     inset: 0,
+                    width: '100%',
+                    height: syncScroll ? `${virtualHeight}px` : '100%',
+                    transform: syncScroll ? `translateY(-${scrollY + offsetY}px)` : undefined,
                     zIndex:
                       mode === 'blink'
                         ? blinkShowsDesign
                           ? 5
                           : 20
-                        : activeTarget === 'b'
-                          ? 20
-                          : 10,
+                        : mode === 'split'
+                          ? 15
+                          : activeTarget === 'b'
+                            ? 20
+                            : 10,
                     opacity: mode === 'blink' ? (blinkShowsDesign ? 0 : 1) : 1,
                     clipPath: mode === 'split' ? `inset(0 0 0 ${splitPos}%)` : undefined,
-                    pointerEvents: activeTarget === 'b' ? 'auto' : 'none',
+                    pointerEvents:
+                      wheelCaptureMode
+                        ? 'none'
+                        : mode === 'split'
+                          ? 'auto'
+                          : activeTarget === 'b' || activeTarget === 'both'
+                            ? 'auto'
+                            : 'none',
                   }}
-                  className="size-full transition-opacity duration-75"
+                  className="transition-[opacity] duration-75"
                 >
                   <iframe
                     id="live-frame-b"
                     key={refreshKeyB}
                     src={fullUrlB}
                     title="Página B (Implementação)"
+                    scrolling={syncScroll ? 'no' : 'auto'}
                     sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
                     className="size-full border-0"
                   />
                 </div>
+
+                {/* ------------------------------------------------------------ */}
+                {/*  WHEEL CAPTURE OVERLAY (When user wants wheel everywhere)    */}
+                {/* ------------------------------------------------------------ */}
+                {wheelCaptureMode && (
+                  <div
+                    onWheel={handleWheel}
+                    title="Modo Rolar Ativo: Use a roda do mouse para rolar ambas as telas juntas"
+                    className="absolute inset-0 z-35 cursor-ns-resize bg-black/10"
+                  />
+                )}
 
                 {/* ------------------------------------------------------------ */}
                 {/*  DRAGGABLE SPLIT CURTAIN HANDLE (when mode === 'split')      */}
@@ -786,11 +1030,12 @@ export function LiveBrowserView({
                 {mode === 'split' && (
                   <div
                     onPointerDown={handleSplitPointerDown}
+                    onWheel={handleWheel}
                     style={{ left: `${splitPos}%` }}
-                    className="absolute top-0 bottom-0 z-40 -ml-2.5 w-5 cursor-col-resize flex items-center justify-center group"
+                    className="absolute top-0 bottom-0 z-40 -ml-3 w-6 cursor-col-resize flex items-center justify-center group"
                   >
-                    <div className="h-full w-0.5 bg-neon-400 shadow-[0_0_12px_rgba(20,241,149,0.8)]" />
-                    <div className="absolute top-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-full bg-ink-900 border-2 border-neon-400 text-neon-300 shadow-xl group-hover:scale-110 transition-transform">
+                    <div className="h-full w-0.5 bg-neon-400 shadow-[0_0_12px_rgba(20,241,149,0.9)]" />
+                    <div className="absolute top-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-full bg-ink-900 border-2 border-neon-400 text-neon-300 shadow-2xl group-hover:scale-115 transition-transform">
                       <SplitSquareVertical size={13} />
                     </div>
                   </div>
@@ -813,7 +1058,10 @@ export function LiveBrowserView({
                   )}
                 >
                   {/* Header A */}
-                  <div className="flex h-9 items-center justify-between border-b border-white/[0.08] bg-black/40 px-3">
+                  <div
+                    onWheel={handleWheel}
+                    className="flex h-9 items-center justify-between border-b border-white/[0.08] bg-black/40 px-3"
+                  >
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1.5">
                         <span className="size-2.5 rounded-full bg-red-500/70" />
@@ -862,27 +1110,26 @@ export function LiveBrowserView({
                     </div>
                   </div>
 
-                  <div className="relative flex-1 bg-white">
-                    <iframe
-                      id="live-frame-a"
-                      key={refreshKeyA}
-                      src={fullUrlA}
-                      title="Página A (Referência)"
-                      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
-                      className="size-full border-0"
-                    />
-                    {activeTarget === 'b' && (
-                      <div
-                        onClick={() => setActiveTarget('a')}
-                        title="Clique para mexer na Página A"
-                        className="absolute inset-0 z-10 flex cursor-pointer items-center justify-center bg-ink-950/30 hover:bg-ink-950/10 transition-all"
-                      >
-                        <div className="glass flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] text-ink-100 shadow-md">
-                          <span className="size-2 rounded-full bg-iris-400" />
-                          <span>Clique para mexer na Página A</span>
-                        </div>
-                      </div>
-                    )}
+                  <div className="relative flex-1 bg-white overflow-hidden">
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: syncScroll ? `${virtualHeight}px` : '100%',
+                        transform: syncScroll ? `translateY(-${scrollY}px)` : undefined,
+                      }}
+                    >
+                      <iframe
+                        id="live-frame-a"
+                        key={refreshKeyA}
+                        src={fullUrlA}
+                        title="Página A (Referência)"
+                        scrolling={syncScroll ? 'no' : 'auto'}
+                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+                        className="size-full border-0"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -898,7 +1145,10 @@ export function LiveBrowserView({
                   )}
                 >
                   {/* Header B */}
-                  <div className="flex h-9 items-center justify-between border-b border-white/[0.08] bg-black/40 px-3">
+                  <div
+                    onWheel={handleWheel}
+                    className="flex h-9 items-center justify-between border-b border-white/[0.08] bg-black/40 px-3"
+                  >
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1.5">
                         <span className="size-2.5 rounded-full bg-red-500/70" />
@@ -947,47 +1197,112 @@ export function LiveBrowserView({
                     </div>
                   </div>
 
-                  <div className="relative flex-1 bg-white">
-                    <iframe
-                      id="live-frame-b"
-                      key={refreshKeyB}
-                      src={fullUrlB}
-                      title="Página B (Implementação)"
-                      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
-                      className="size-full border-0"
-                    />
-                    {activeTarget === 'a' && (
-                      <div
-                        onClick={() => setActiveTarget('b')}
-                        title="Clique para mexer no Localhost (Página B)"
-                        className="absolute inset-0 z-10 flex cursor-pointer items-center justify-center bg-ink-950/30 hover:bg-ink-950/10 transition-all"
-                      >
-                        <div className="glass flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] text-ink-100 shadow-md">
-                          <span className="size-2 rounded-full bg-neon-400" />
-                          <span>Clique para mexer no Localhost</span>
-                        </div>
-                      </div>
-                    )}
+                  <div className="relative flex-1 bg-white overflow-hidden">
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: syncScroll ? `${virtualHeight}px` : '100%',
+                        transform: syncScroll ? `translateY(-${scrollY + offsetY}px)` : undefined,
+                      }}
+                    >
+                      <iframe
+                        id="live-frame-b"
+                        key={refreshKeyB}
+                        src={fullUrlB}
+                        title="Página B (Implementação)"
+                        scrolling={syncScroll ? 'no' : 'auto'}
+                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+                        className="size-full border-0"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
             </div>
           )}
         </div>
+
+        {/* ==================================================================== */}
+        {/*  MASTER UNIFIED SYNCHRONIZED SCROLLBAR (Right strip)                */}
+        {/* ==================================================================== */}
+        {syncScroll && (
+          <div
+            onWheel={handleWheel}
+            className="flex w-9 shrink-0 flex-col items-center justify-between rounded-xl border border-white/[0.08] bg-ink-900/90 py-2 backdrop-blur-md shadow-xl"
+          >
+            <button
+              type="button"
+              onClick={() => setScrollY(0)}
+              title="Ir para o Topo (0px)"
+              className="rounded p-1 text-ink-400 hover:bg-white/10 hover:text-white"
+            >
+              <ArrowUp size={12} />
+            </button>
+
+            {/* Draggable Vertical Track */}
+            <div
+              ref={scrollbarTrackRef}
+              onPointerDown={handleScrollbarPointerDown}
+              onPointerMove={handleScrollbarMove}
+              onPointerUp={handleScrollbarPointerUp}
+              className="relative my-2 w-2 flex-1 cursor-pointer rounded-full bg-white/[0.08] hover:bg-white/[0.14] transition-colors"
+            >
+              {/* Draggable Thumb */}
+              <div
+                style={{
+                  top: `${Math.min(92, Math.max(0, scrollPct * 0.92))}%`,
+                  height: '24px',
+                }}
+                className="absolute inset-x-0 rounded-full bg-neon-400 shadow-[0_0_10px_rgba(20,241,149,0.8)]"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => changeScroll(400)}
+              title="Descer 400px"
+              className="rounded p-1 text-ink-400 hover:bg-white/10 hover:text-white"
+            >
+              <ArrowDown size={12} />
+            </button>
+
+            {/* Vertical Scroll Percentage Label */}
+            <span className="mt-1 font-mono text-[9px] text-ink-400 -rotate-90 select-none">
+              {Math.round(scrollPct)}%
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Floating Helper Banner at Bottom */}
-      <div className="z-10 flex items-center justify-between border-t border-white/[0.06] bg-ink-950/90 px-4 py-1.5 text-[11px] text-ink-400">
+      <div
+        onWheel={handleWheel}
+        className="z-10 flex items-center justify-between border-t border-white/[0.06] bg-ink-950/90 px-4 py-1.5 text-[11px] text-ink-400"
+      >
         <div className="flex items-center gap-2">
-          <span className="text-iris-400">💡 Comparação ao Vivo:</span>
+          <span className="text-neon-400 font-bold">🔒 Rolagem 100% Sincronizada:</span>
           <span>
-            Use os botões de modo acima (<strong className="text-white">Cortina, Onion Skin, Blink</strong>) para comparar as páginas sobrepostas uma em cima da outra.
-            Você pode escolher em qual mexer a qualquer momento com <Kbd>Alt+A</Kbd> ou <Kbd>Alt+B</Kbd>!
+            Ambos os lados acompanham juntos em tempo real! Use a <strong className="text-white">barra mestra à direita</strong>, as setas{' '}
+            <Kbd>↑</Kbd> / <Kbd>↓</Kbd>, <Kbd>PageUp</Kbd> / <Kbd>PageDown</Kbd>, ou a roda do mouse sobre as barras.
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            {SCROLL_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => scrollToPercent(p.pct)}
+                className="rounded px-1.5 py-0.5 text-[10px] bg-white/[0.06] hover:bg-white/15 text-ink-300 hover:text-white"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
           <span>
-            Atalhos: <Kbd>Espaço</Kbd> Blink · <Kbd>Alt+A</Kbd> Mexer em A · <Kbd>Alt+B</Kbd> Mexer em B · <Kbd>Alt+S</Kbd> Sincronizar
+            Atalhos: <Kbd>Espaço</Kbd> Blink · <Kbd>Alt+S</Kbd> Sincronizar Rota
           </span>
         </div>
       </div>
