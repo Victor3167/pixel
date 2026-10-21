@@ -58,7 +58,7 @@ import { PixelSampler } from './utils/pixelSampler'
 import { compilePrompt } from './utils/promptCompiler'
 
 const INITIAL_DESIGN_CAPTURE_SETTINGS: CaptureSettings = {
-  url: 'https://lojasilvasalesdesign.bisws.com.br',
+  url: 'https://lojacerealistadesign.bisws.com.br',
   selector: '',
   waitForMs: 0,
   hideScrollbars: true,
@@ -127,11 +127,18 @@ export default function App() {
   const [geminiModel, setGeminiModel] = useState<GeminiModel>(() => {
     try {
       const saved = localStorage.getItem(MODEL_STORAGE)
-      if (saved === 'gemini-3.5-flash' || saved === 'gemini-3.8-flash' || saved === 'gemini-flash-latest') return saved
+      if (
+        saved === 'gemini-3.5-flash-lite' ||
+        saved === 'gemini-flash-lite-latest' ||
+        saved === 'gemini-3.5-flash' ||
+        saved === 'gemini-3.8-flash' ||
+        saved === 'gemini-flash-latest'
+      )
+        return saved
     } catch {
       /* ignore */
     }
-    return 'gemini-3.5-flash'
+    return 'gemini-3.5-flash-lite'
   })
   const [aiRunning, setAiRunning] = useState<boolean>(false)
   const [aiError, setAiError] = useState<string | null>(null)
@@ -510,6 +517,7 @@ export default function App() {
           obsidianVault.useInAudit && activeObsidianMarkdown.trim()
             ? { title: activeObsidianTitle, content: activeObsidianMarkdown }
             : null,
+        domMap: implMeta?.domMap,
       })
 
       const newIssues: AuditIssue[] = rawIssues.map((raw, idx) => {
@@ -565,6 +573,7 @@ export default function App() {
     obsidianVault.useInAudit,
     activeObsidianMarkdown,
     activeObsidianTitle,
+    implMeta,
     addToast,
   ])
 

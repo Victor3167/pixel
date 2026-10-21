@@ -14,8 +14,10 @@ export const API_KEY_STORAGE = 'pixelaudit.geminiApiKey'
 export const MODEL_STORAGE = 'pixelaudit.geminiModel'
 
 export const GEMINI_MODELS: { value: GeminiModel; label: string; hint: string }[] = [
-  { value: 'gemini-3.5-flash', label: '3.5 Flash', hint: 'Fast, multimodal & stable (Recommended)' },
-  { value: 'gemini-3.8-flash', label: '3.8 Flash', hint: 'Latest generation' },
+  { value: 'gemini-3.5-flash-lite', label: '3.5 Flash Lite', hint: 'Ultra rápido, alta disponibilidade e multimodal (Recomendado)' },
+  { value: 'gemini-flash-lite-latest', label: 'Flash Lite Latest', hint: 'Versão mais recente de alta disponibilidade' },
+  { value: 'gemini-3.5-flash', label: '3.5 Flash', hint: 'Multimodal padrão' },
+  { value: 'gemini-3.8-flash', label: '3.8 Flash', hint: 'Última geração' },
 ]
 
 /** Key persisted by the user in localStorage ('' when none). */
@@ -78,27 +80,36 @@ export const ISSUE_RESPONSE_SCHEMA: Schema = {
   },
 }
 
-const SYSTEM_INSTRUCTION = `Você é um engenheiro sênior de QA e front-end meticuloso realizando uma auditoria de regressão visual pixel-perfect.
-Você recebe três imagens com dimensões IDÊNTICAS e mesmo espaço de coordenadas:
-  1. DESIGN: a referência do Designer / Figma (fonte da verdade).
-  2. IMPLEMENTATION: screenshot da aplicação web em execução.
+const SYSTEM_INSTRUCTION = `Você é um engenheiro sênior de QA e front-end especialista em auditoria de regressão visual pixel-perfect.
+Você recebe imagens com dimensões IDÊNTICAS e mesmo espaço de coordenadas:
+  1. DESIGN: a referência do Designer / Figma (fonte da verdade absoluta).
+  2. IMPLEMENTATION: screenshot da aplicação web em execução no navegador.
   3. DIFF: o design escurecido com cada pixel divergente destacado em magenta neon (gerado pelo pixelmatch).
 
 IDIOMA OBRIGATÓRIO (MANDATÓRIO):
-- TODOS os textos dos campos "description" e "expectedFix" DEVEM ser redigidos obrigatoriamente em Português do Brasil (pt-BR) fluente, técnico e claro para desenvolvedores front-end.
-- Exemplo de "description": "O banner principal exibe a imagem de vinho em vez da garrafa de azeite do design", "O botão 'COMPRE AGORA' possui cor de fundo #693119 quando deveria ser #E79307", "Modal de cookies indesejado cobrindo o canto inferior esquerdo".
-- Exemplo de "expectedFix": "Ajustar background-color para #E79307 e padding para 12px 24px", "Definir o slide padrão ativo do componente de carrossel para o banner de azeite", "Fechar ou ocultar o modal de consentimento de cookies no estado inicial".
+- TODOS os textos dos campos "description" e "expectedFix" DEVEM ser redigidos obrigatoriamente em Português do Brasil (pt-BR) fluente, técnico e acionável para desenvolvedores front-end.
 
-Regras da Auditoria:
-- Relate apenas discrepâncias visuais REAIS que um desenvolvedor precisa corrigir: espaçamentos, tamanhos, alinhamento, tipografia, cores, border-radius, sombras/bordas, elementos ausentes ou extras, ícones/imagens e estrutura de layout.
-- Use a imagem DIFF para localizar as regiões com precisão milimétrica, e compare DESIGN vs IMPLEMENTATION para identificar a causa exata.
-- Ignore ruídos de anti-aliasing sub-pixel e pixels isolados sem impacto visual.
-- Agrupe diferenças com a mesma causa raiz em UMA única ocorrência delimitando o elemento afetado.
-- Bounding boxes devem ser ajustadas: [ymin, xmin, ymax, xmax] com inteiros na escala 0-1000 relativa à imagem total.
-- Cite valores mensuráveis sempre que possível (offsets em px, tamanhos de fonte, cores HEX, raios de borda).
-- "expectedFix" deve ser uma instrução prática de código (CSS ou marcação).
-- Se uma especificação ou documentação do Obsidian for fornecida no contexto, trate-a como autoridade em regras de negócio, tokens CSS, estados esperados e componentes.
-- Ordene por severidade (critical primeiro). Retorne no máximo 25 issues. Retorne array vazio se as imagens forem idênticas.`
+DIRETRIZES DE ANÁLISE DE ALTA PRECISÃO:
+1. Estrutura & Layout Vertical:
+   - Inspecione a altura do header e da barra de categorias. Se houver padding vertical excessivo empurrando seções subsequentes (ex.: início do banner em Y=198px em vez de Y=152px), aponte como CRÍTICO de Estrutura / Layout.
+   - Compare rigorosamente os links de menu/categorias no desktop: itens presentes no design vs itens trocados ou ausentes na implementação.
+2. Elementos Extras & Modais Invasivos:
+   - Detecte modais de consentimento de cookies, popups LGPD ou badges de depuração ("Rendering...", "Dev") cobrindo o conteúdo de base (ex.: cards de benefícios). Aponte como GRAVE de Elemento Extra.
+3. Botões Flutuantes & Componentes Satélite:
+   - Analise botões flutuantes (ex.: WhatsApp, ajuda): verifique se foi implementado como pílula expandida com texto ("Precisa de ajuda?") ou botões extras adjacentes, quando no design é um botão circular simples (~56x56px, background verde, rounded-full) com ícone SVG.
+4. Elementos Faltando & Badges:
+   - Verifique badges numéricos sobrepostos a ícones (ex.: badge preto com número "3" e texto branco sobre o ícone de coração de favoritos no header). Aponte como Elemento Faltando.
+5. Sliders, Carrosséis & Paginação:
+   - Verifique os indicadores de paginação (dots): a barra ou dot ativo está no primeiro slide (índice 0) ou avançou para outro? O slide ativo corresponde ao da referência?
+6. Tokens e Regras do Obsidian:
+   - Se documentação Obsidian for fornecida, respeite integralmente os tokens, arquitetura (zero forks, Level A composition) e convenções do projeto.
+
+Regras de Saída:
+- Relate discrepâncias visuais reais que um dev precisa corrigir. Ignore anti-aliasing sub-pixel.
+- Agrupe diferenças com a mesma causa raiz em UMA ocorrência delimitando o elemento afetado.
+- Bounding boxes ajustadas: [ymin, xmin, ymax, xmax] com inteiros na escala 0-1000 relativa à imagem total.
+- "expectedFix" deve ser uma instrução prática de código (CSS ou marcação JSX/Tailwind).
+- Ordene por severidade (critical primeiro). Retorne até 20 issues.`
 
 export interface VisionAuditInput {
   apiKey: string
@@ -117,11 +128,18 @@ export interface VisionAuditInput {
     title: string
     content: string
   } | null
+  /** Optional telemetry of visible DOM nodes in the implementation. */
+  domMap?: Array<{
+    tagName: string
+    className: string
+    textSnippet: string
+    rect: { x: number; y: number; width: number; height: number }
+  }>
 }
 
 export async function runVisionAudit(input: VisionAuditInput): Promise<AiRawIssue[]> {
   if (!input.apiKey) {
-    throw new Error('Add a Gemini API key first (stored in localStorage or VITE_GEMINI_API_KEY).')
+    throw new Error('Adicione uma chave de API do Gemini (salva no localStorage ou no .env como VITE_GEMINI_API_KEY).')
   }
   const ai = new GoogleGenAI({ apiKey: input.apiKey })
   const png = (data: string) => ({ inlineData: { mimeType: 'image/png', data } })
@@ -131,19 +149,54 @@ export async function runVisionAudit(input: VisionAuditInput): Promise<AiRawIssu
       'INSTRUÇÃO ESPECIAL DE AUDITORIA: Analise se a implementação respeita estritamente as regras de negócio, tokens de cores/espaçamentos e convenções descritas no documento Obsidian acima. Cite os requisitos correspondentes na descrição da issue quando aplicável.'
     : ''
 
+  let domSection = ''
+  if (input.domMap && input.domMap.length > 0) {
+    const keyNodes = input.domMap
+      .filter((n) => {
+        const inView = n.rect.x < input.width && n.rect.y < input.height && n.rect.width > 8 && n.rect.height > 8
+        const isInteresting =
+          Boolean(n.textSnippet) ||
+          n.tagName === 'svg' ||
+          n.tagName === 'button' ||
+          n.tagName === 'a' ||
+          n.tagName === 'input' ||
+          n.className.includes('fixed') ||
+          n.className.includes('nav') ||
+          n.className.includes('header') ||
+          n.className.includes('banner') ||
+          n.className.includes('modal')
+        return inView && isInteresting
+      })
+      .slice(0, 50)
+
+    if (keyNodes.length > 0) {
+      domSection =
+        '\n\n[ELEMENTOS DOM REAIS CAPTURADOS NA IMPLEMENTAÇÃO (Use estes seletores e coordenadas exatas para ancorar as issues)]:\n' +
+        keyNodes
+          .map((n) => {
+            const text = n.textSnippet ? ` text="${n.textSnippet}"` : ''
+            const cls = n.className ? ` class="${n.className.slice(0, 60)}"` : ''
+            return `<${n.tagName}${cls}>${text} rect=[x:${Math.round(n.rect.x)}, y:${Math.round(n.rect.y)}, w:${Math.round(n.rect.width)}, h:${Math.round(n.rect.height)}]`
+          })
+          .join('\n')
+    }
+  }
+
   const context =
-    `Comparison space: ${input.width}x${input.height} px. ` +
-    `Design export density: ${input.designScale}x (1 CSS px = ${input.designScale} image px). ` +
-    (input.matchScore !== null ? `pixelmatch score: ${input.matchScore.toFixed(2)}%. ` : '') +
-    'Audit the implementation against the design.' +
+    `Espaço de comparação: ${input.width}x${input.height} px. ` +
+    `Densidade de exportação: ${input.designScale}x (1 CSS px = ${input.designScale} image px). ` +
+    (input.matchScore !== null ? `Score de correspondência pixelmatch: ${input.matchScore.toFixed(2)}%. ` : '') +
+    'Realize a auditoria visual detalhada da implementação contra o design de referência.' +
+    domSection +
     docSection
 
   // Candidate models: primary chosen model first, followed by stable fallbacks
-  const candidateModels = [
+  const candidateModels: string[] = [
     input.model,
+    'gemini-3.5-flash-lite',
+    'gemini-flash-lite-latest',
     'gemini-3.5-flash',
     'gemini-3.8-flash',
-    'gemini-flash-latest',
   ].filter((m, i, arr) => arr.indexOf(m) === i)
 
   let lastError: unknown = null
@@ -156,11 +209,11 @@ export async function runVisionAudit(input: VisionAuditInput): Promise<AiRawIssu
             role: 'user',
             parts: [
               { text: context },
-              { text: 'Image 1 - DESIGN (reference):' },
+              { text: 'Imagem 1 - DESIGN (Referência do Figma / Designer):' },
               png(input.designBase64),
-              { text: 'Image 2 - IMPLEMENTATION (live screenshot):' },
+              { text: 'Imagem 2 - IMPLEMENTATION (Screenshot da aplicação ativa no navegador):' },
               png(input.implBase64),
-              { text: 'Image 3 - DIFF (magenta = mismatching pixels):' },
+              { text: 'Imagem 3 - DIFF (Pixels divergentes destacados em magenta neon):' },
               png(input.diffBase64),
             ],
           },
@@ -169,41 +222,47 @@ export async function runVisionAudit(input: VisionAuditInput): Promise<AiRawIssu
           systemInstruction: SYSTEM_INSTRUCTION,
           responseMimeType: 'application/json',
           responseSchema: ISSUE_RESPONSE_SCHEMA,
-          temperature: 0.2,
+          temperature: 0.15,
         },
       })
 
       const text = response.text
-      if (!text) throw new Error('Gemini returned an empty response.')
+      if (!text) throw new Error('O Gemini retornou uma resposta vazia.')
 
       let parsed: unknown
       try {
         parsed = JSON.parse(text)
       } catch {
-        throw new Error('Gemini returned malformed JSON.')
+        throw new Error('O Gemini retornou um JSON malformado.')
       }
-      if (!Array.isArray(parsed)) throw new Error('Gemini response was not an array of issues.')
+      if (!Array.isArray(parsed)) throw new Error('A resposta do Gemini não foi uma lista de divergências.')
 
       return parsed.filter(isRawIssue)
     } catch (err: unknown) {
       lastError = err
       const msg = String(err).toLowerCase()
-      // If model is retired (404), unavailable/high demand (503), or quota reached on pro, try next candidate
+      // If model has high demand (503), quota (429), or is not found (404), seamlessly try next candidate
       if (
         msg.includes('404') ||
         msg.includes('not found') ||
         msg.includes('no longer available') ||
         msg.includes('503') ||
         msg.includes('unavailable') ||
-        msg.includes('rate-limit')
+        msg.includes('high demand') ||
+        msg.includes('spikes in demand') ||
+        msg.includes('rate-limit') ||
+        msg.includes('429') ||
+        msg.includes('resource_exhausted')
       ) {
+        console.warn(`[pixel-audit] Modelo ${modelName} indisponível ou com alta demanda (${msg.slice(0, 80)}). Tentando próximo modelo...`)
+        await new Promise((r) => setTimeout(r, 600))
         continue
       }
       throw err
     }
   }
 
-  throw lastError ?? new Error('Gemini returned an error during audit.')
+  throw lastError ?? new Error('Falha ao executar auditoria com o Gemini.')
 }
 
 function isRawIssue(value: unknown): value is AiRawIssue {

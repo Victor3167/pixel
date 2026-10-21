@@ -1,5 +1,5 @@
 import type { AuditIssue, CaptureMeta, ComparisonLayout, DOMElementNode, Rect } from '../types/audit'
-import { domNodeAtComparisonPoint } from './domMatch'
+import { domNodeForComparisonRect } from './domMatch'
 import { rectCenter } from './geometry'
 import type { PixelSampler } from './pixelSampler'
 
@@ -17,9 +17,9 @@ export interface CrossReference {
 }
 
 /**
- * Smart cross-referencing: takes the centre of a bounding box and
+ * Smart cross-referencing: takes a bounding box and
  *  - samples the exact HEX from the raw Design / Implementation pixels,
- *  - resolves the live DOM element (tag, classes, computed styles) under it.
+ *  - resolves the live DOM element (tag, classes, computed styles) matching the area.
  */
 export function crossReferenceRect(rect: Rect, ctx: CrossReferenceContext): CrossReference {
   const center = rectCenter(rect)
@@ -29,7 +29,7 @@ export function crossReferenceRect(rect: Rect, ctx: CrossReferenceContext): Cros
   return {
     designHex: ctx.designSampler?.hexAt(cx, cy) ?? null,
     implHex: ctx.implSampler?.hexAt(cx - offsetX, cy - offsetY) ?? null,
-    dom: domNodeAtComparisonPoint(ctx.meta, { x: cx, y: cy }, offsetX, offsetY),
+    dom: domNodeForComparisonRect(ctx.meta, rect, offsetX, offsetY),
   }
 }
 
