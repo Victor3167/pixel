@@ -56,7 +56,7 @@ export function IssueCropComparison({
 
       // Draw subtle boundary of actual issue rect inside padding
       if (pad > 0) {
-        ctx.strokeStyle = 'rgba(99, 84, 240, 0.6)'
+        ctx.strokeStyle = 'rgba(95, 113, 66, 0.85)'
         ctx.lineWidth = 1.5
         ctx.setLineDash([3, 3])
         ctx.strokeRect(rect.x - cropX, rect.y - cropY, rect.width, rect.height)

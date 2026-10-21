@@ -1,4 +1,4 @@
-import { FlaskConical, Globe, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, ScanSearch, Sparkles } from 'lucide-react'
+import { BookOpen, FlaskConical, Globe, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, ScanSearch, Sparkles } from 'lucide-react'
 import type { InspectionMode } from '../types/audit'
 import { cn } from '../utils/cn'
 import { Button } from './ui'
@@ -16,6 +16,9 @@ interface HeaderProps {
   aiRunning?: boolean
   canRunAi?: boolean
   matchScore?: number | null
+  onOpenObsidianDoc?: () => void
+  obsidianDocTitle?: string
+  hasObsidianDoc?: boolean
 }
 
 export function Header({
@@ -31,6 +34,9 @@ export function Header({
   aiRunning,
   canRunAi,
   matchScore,
+  onOpenObsidianDoc,
+  obsidianDocTitle,
+  hasObsidianDoc,
 }: HeaderProps) {
   const isLive = mode === 'live'
 
@@ -97,11 +103,11 @@ export function Header({
           className={cn(
             'flex h-7.5 items-center gap-2 rounded-lg px-3.5 text-[12px] font-medium transition-all duration-150',
             !isLive
-              ? 'bg-iris-500 text-white font-semibold shadow-[0_2px_12px_rgba(99,84,240,0.4)]'
+              ? 'bg-iris-500 text-white font-semibold shadow-[0_2px_12px_rgba(74,91,49,0.5)]'
               : 'text-ink-300 hover:text-white hover:bg-white/[0.05]',
           )}
         >
-          <ScanSearch size={13} className={!isLive ? 'text-white' : 'text-iris-400'} />
+          <ScanSearch size={13} className={!isLive ? 'text-white' : 'text-iris-300'} />
           <span>Pixel Diff &amp; Inspeção</span>
         </button>
       </div>
@@ -136,9 +142,36 @@ export function Header({
             onClick={onRunAi}
             icon={<Sparkles size={13} className={aiRunning ? 'animate-spin' : ''} />}
             title="Executar auditoria inteligente com Gemini Vision AI"
-            className="font-bold shadow-[0_2px_14px_rgba(255,43,214,0.35)]"
+            className="font-bold shadow-[0_2px_14px_rgba(34,197,94,0.35)]"
           >
             {aiRunning ? 'Auditando…' : 'Auditar com IA'}
+          </Button>
+        )}
+
+        {/* Obsidian Doc Trigger */}
+        {onOpenObsidianDoc && (
+          <Button
+            size="sm"
+            variant="subtle"
+            id="header-obsidian-doc"
+            icon={<BookOpen size={12} className={hasObsidianDoc ? 'text-military-400' : 'text-ink-300'} />}
+            onClick={onOpenObsidianDoc}
+            title={
+              hasObsidianDoc
+                ? `Doc Obsidian ativo: ${obsidianDocTitle || 'Documentação'} (clique para editar ou trocar)`
+                : 'Adicionar documentação ou regras do Obsidian'
+            }
+            className={cn(
+              'transition-all',
+              hasObsidianDoc
+                ? 'border-military-500/40 bg-military-500/15 text-military-300 font-semibold'
+                : 'text-ink-300 hover:text-white',
+            )}
+          >
+            <span className="hidden md:inline max-w-[130px] truncate">
+              {hasObsidianDoc ? (obsidianDocTitle || 'Doc Obsidian') : 'Doc Obsidian'}
+            </span>
+            {hasObsidianDoc && <span className="size-1.5 rounded-full bg-military-400 shrink-0" />}
           </Button>
         )}
 

@@ -97,6 +97,7 @@ Regras da Auditoria:
 - Bounding boxes devem ser ajustadas: [ymin, xmin, ymax, xmax] com inteiros na escala 0-1000 relativa à imagem total.
 - Cite valores mensuráveis sempre que possível (offsets em px, tamanhos de fonte, cores HEX, raios de borda).
 - "expectedFix" deve ser uma instrução prática de código (CSS ou marcação).
+- Se uma especificação ou documentação do Obsidian for fornecida no contexto, trate-a como autoridade em regras de negócio, tokens CSS, estados esperados e componentes.
 - Ordene por severidade (critical primeiro). Retorne no máximo 25 issues. Retorne array vazio se as imagens forem idênticas.`
 
 export interface VisionAuditInput {
@@ -111,6 +112,11 @@ export interface VisionAuditInput {
   /** Pixel density of the design export relative to CSS px. */
   designScale: number
   matchScore: number | null
+  /** Optional documentation / specifications from Obsidian. */
+  obsidianDoc?: {
+    title: string
+    content: string
+  } | null
 }
 
 export async function runVisionAudit(input: VisionAuditInput): Promise<AiRawIssue[]> {
@@ -120,11 +126,17 @@ export async function runVisionAudit(input: VisionAuditInput): Promise<AiRawIssu
   const ai = new GoogleGenAI({ apiKey: input.apiKey })
   const png = (data: string) => ({ inlineData: { mimeType: 'image/png', data } })
 
+  const docSection = input.obsidianDoc?.content.trim()
+    ? `\n\n[DOCUMENTAÇÃO & ESPECIFICAÇÕES DO PROJETO (DOC OBSIDIAN: "${input.obsidianDoc.title || 'Documentação'}")]:\n"""\n${input.obsidianDoc.content.trim()}\n"""\n` +
+      'INSTRUÇÃO ESPECIAL DE AUDITORIA: Analise se a implementação respeita estritamente as regras de negócio, tokens de cores/espaçamentos e convenções descritas no documento Obsidian acima. Cite os requisitos correspondentes na descrição da issue quando aplicável.'
+    : ''
+
   const context =
     `Comparison space: ${input.width}x${input.height} px. ` +
     `Design export density: ${input.designScale}x (1 CSS px = ${input.designScale} image px). ` +
     (input.matchScore !== null ? `pixelmatch score: ${input.matchScore.toFixed(2)}%. ` : '') +
-    'Audit the implementation against the design.'
+    'Audit the implementation against the design.' +
+    docSection
 
   // Candidate models: primary chosen model first, followed by stable fallbacks
   const candidateModels = [

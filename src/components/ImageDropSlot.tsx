@@ -59,7 +59,7 @@ export function ImageDropSlot({
         dragging
           ? 'border-iris-400 bg-iris-500/10 shadow-glow-iris'
           : isPasteTarget
-            ? 'border-iris-500/50 shadow-[0_0_0_3px_rgb(122_107_255/0.12)]'
+            ? 'border-iris-500/50 shadow-[0_0_0_3px_rgba(95,113,66,0.25)]'
             : 'border-white/[0.07] hover:border-white/15',
       )}
     >

@@ -1,4 +1,4 @@
-import { Check, Copy, Download, FileText, Image as ImageIcon, Sparkles } from 'lucide-react'
+import { BookOpen, Check, Copy, Download, FileText, Image as ImageIcon, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { Button, FieldLabel, TextInput } from './ui'
 
@@ -15,6 +15,10 @@ interface PromptPanelProps {
   onCopy: () => Promise<boolean>
   onDownloadPng: () => void
   onDownloadMarkdown: () => void
+  onOpenObsidianDoc?: () => void
+  hasObsidianDoc?: boolean
+  obsidianDocTitle?: string
+  obsidianDocInPrompt?: boolean
 }
 
 export function PromptPanel({
@@ -30,6 +34,10 @@ export function PromptPanel({
   onCopy,
   onDownloadPng,
   onDownloadMarkdown,
+  onOpenObsidianDoc,
+  hasObsidianDoc,
+  obsidianDocTitle,
+  obsidianDocInPrompt,
 }: PromptPanelProps) {
   const [copied, setCopied] = useState(false)
 
@@ -56,6 +64,31 @@ export function PromptPanel({
           >
             {aiRunning ? 'Analisando e gerando prompt…' : '✨ Gerar / Atualizar Prompt de Correção'}
           </Button>
+        </div>
+      )}
+
+      {/* Obsidian Doc Attached Indicator */}
+      {onOpenObsidianDoc && (
+        <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2 bg-white/[0.015] text-[11px]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <BookOpen size={13} className={hasObsidianDoc && obsidianDocInPrompt ? 'text-military-400' : 'text-ink-400'} />
+            <span className="text-ink-300 font-medium">Doc Obsidian:</span>
+            <span className="truncate font-mono text-white text-[10.5px] max-w-[150px]">
+              {hasObsidianDoc ? (obsidianDocTitle || 'Doc anexado') : 'Nenhum'}
+            </span>
+            {hasObsidianDoc && obsidianDocInPrompt && (
+              <span className="rounded bg-military-500/20 px-1 py-0.5 text-[9px] font-semibold text-military-300">
+                Incluso no prompt
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onOpenObsidianDoc}
+            className="text-[10.5px] font-semibold text-military-300 hover:text-white hover:underline shrink-0 ml-2"
+          >
+            {hasObsidianDoc ? 'Editar / Trocar' : '+ Anexar Doc'}
+          </button>
         </div>
       )}
 

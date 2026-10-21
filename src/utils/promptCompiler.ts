@@ -5,6 +5,10 @@ import { formatNumber } from './geometry'
 export interface PromptContext {
   projectName: string
   extraContext: string
+  obsidianDoc?: {
+    title: string
+    content: string
+  } | null
   designName: string | null
   designSize: { width: number; height: number } | null
   implName: string | null
@@ -132,12 +136,23 @@ export function compilePrompt(context: PromptContext, issues: AuditIssue[]): str
     })
   }
 
+  if (context.obsidianDoc?.content.trim()) {
+    const docTitle = context.obsidianDoc.title.trim() || 'Documentação do Projeto'
+    lines.push(`## Especificação & Regras do Projeto (Obsidian: ${docTitle})`)
+    lines.push('')
+    lines.push(context.obsidianDoc.content.trim())
+    lines.push('')
+  }
+
   lines.push('## Instruções de Execução')
   lines.push('1. Localize cada elemento no código-fonte usando a tag, classes e seletores indicados acima (busque no repositório pelas classes CSS).')
   lines.push('2. Aplique a correção esperada para cada item numerado, priorizando os tokens de design do projeto / classes utilitárias em vez de valores hard-coded.')
   lines.push('3. Mantenha as alterações mínimas e com escopo preciso: não altere comportamentos ou refatore código não relacionado.')
   lines.push('4. Alinhe com precisão milimétrica: espaçamentos, tipografia (font-size, font-weight, line-height), cores e border-radius exatos.')
   lines.push('5. Ao concluir, confirme os arquivos alterados por número de issue (#1, #2, …) para validação.')
+  if (context.obsidianDoc?.content.trim()) {
+    lines.push('6. Respeite com prioridade absoluta todas as convenções, regras de negócio e tokens descritos na seção "Especificação & Regras do Projeto (Obsidian)".')
+  }
 
   return lines.join('\n')
 }

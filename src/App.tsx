@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { AiControls } from './components/AiControls'
 import { Header } from './components/Header'
 import { IssuesPanel } from './components/IssuesPanel'
+import { ObsidianDocModal } from './components/ObsidianDocModal'
 import { PromptPanel } from './components/PromptPanel'
 import { RightPanel, type RightTab } from './components/RightPanel'
 import { SourcePanel } from './components/SourcePanel'
@@ -19,6 +20,7 @@ import type {
   GeminiModel,
   InspectionMode,
   LoadedImage,
+  ObsidianDocState,
   PasteTarget,
   Point,
   Rect,
@@ -28,6 +30,12 @@ import type {
 } from './types/audit'
 import { downloadBlob, downloadText, renderAnnotatedComparison } from './utils/annotatedExport'
 import { captureLocalhost } from './utils/captureClient'
+import {
+  getActiveObsidianMarkdown,
+  getActiveObsidianTitle,
+  readStoredObsidianVault,
+  writeStoredObsidianVault,
+} from './utils/obsidianStorage'
 import { resolveCaptureViewport } from './utils/captureParams'
 import { crossReferenceRect, refreshIssueReferences, type CrossReferenceContext } from './utils/crossReference'
 import { createDemoPair } from './utils/demo'
@@ -150,6 +158,28 @@ export default function App() {
       setToasts((prev) => prev.filter((t) => t.id !== id))
     }, 3200)
   }, [])
+
+  /* -------------------------- Obsidian Documentation ------------------------ */
+  const [obsidianVault, setObsidianVault] = useState<ObsidianDocState>(() => readStoredObsidianVault())
+  const [showObsidianModal, setShowObsidianModal] = useState<boolean>(false)
+
+  const activeObsidianMarkdown = useMemo(() => getActiveObsidianMarkdown(obsidianVault), [obsidianVault])
+  const activeObsidianTitle = useMemo(() => getActiveObsidianTitle(obsidianVault), [obsidianVault])
+  const hasObsidianVault = Boolean(activeObsidianMarkdown.trim())
+
+  const handleSaveObsidianVault = useCallback(
+    (vault: ObsidianDocState) => {
+      setObsidianVault(vault)
+      writeStoredObsidianVault(vault)
+      const activeCount = vault.files.filter((f) => f.enabled && f.content.trim()).length
+      if (activeCount > 0) {
+        addToast('success', `${activeCount} notas do Obsidian ativadas para IA & Prompt!`)
+      } else {
+        addToast('info', 'Nenhuma nota ativa no Vault.')
+      }
+    },
+    [addToast],
+  )
 
   /* -------------------------- Pixel Samplers & Layout ----------------------- */
   const designSampler = useMemo(() => (design ? new PixelSampler(design.element) : null), [design])
@@ -476,6 +506,10 @@ export default function App() {
         height: currentLayout.height,
         designScale,
         matchScore: currentDiff.matchScore,
+        obsidianDoc:
+          obsidianVault.useInAudit && activeObsidianMarkdown.trim()
+            ? { title: activeObsidianTitle, content: activeObsidianMarkdown }
+            : null,
       })
 
       const newIssues: AuditIssue[] = rawIssues.map((raw, idx) => {
@@ -528,6 +562,9 @@ export default function App() {
     geminiModel,
     designScale,
     crossRefContext,
+    obsidianVault.useInAudit,
+    activeObsidianMarkdown,
+    activeObsidianTitle,
     addToast,
   ])
 
@@ -621,6 +658,10 @@ export default function App() {
         {
           projectName,
           extraContext,
+          obsidianDoc:
+            obsidianVault.useInPrompt && activeObsidianMarkdown.trim()
+              ? { title: activeObsidianTitle, content: activeObsidianMarkdown }
+              : null,
           designName: designMeta?.url ?? (design?.name ?? null),
           designSize: design ? { width: design.width, height: design.height } : null,
           implName: implMeta?.url ?? (impl?.name ?? null),
@@ -646,6 +687,9 @@ export default function App() {
     [
       projectName,
       extraContext,
+      obsidianVault.useInPrompt,
+      activeObsidianMarkdown,
+      activeObsidianTitle,
       design,
       designMeta,
       impl,
@@ -737,6 +781,9 @@ export default function App() {
         aiRunning={aiRunning}
         canRunAi={canRunAi}
         matchScore={diffResult?.matchScore ?? null}
+        onOpenObsidianDoc={() => setShowObsidianModal(true)}
+        obsidianDocTitle={activeObsidianTitle}
+        hasObsidianDoc={hasObsidianVault}
       />
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
@@ -873,6 +920,10 @@ export default function App() {
                 canRun={canRunAi}
                 onRun={runAiAudit}
                 error={aiError}
+                onOpenObsidianDoc={() => setShowObsidianModal(true)}
+                hasObsidianDoc={hasObsidianVault}
+                obsidianDocTitle={activeObsidianTitle}
+                obsidianDocInAudit={obsidianVault.useInAudit}
               />
             }
             issues={
@@ -910,6 +961,10 @@ export default function App() {
                 onCopy={handleCopyPrompt}
                 onDownloadPng={handleDownloadPng}
                 onDownloadMarkdown={handleDownloadMarkdown}
+                onOpenObsidianDoc={() => setShowObsidianModal(true)}
+                hasObsidianDoc={hasObsidianVault}
+                obsidianDocTitle={activeObsidianTitle}
+                obsidianDocInPrompt={obsidianVault.useInPrompt}
               />
             }
           />
@@ -917,6 +972,14 @@ export default function App() {
       </div>
 
       <Toasts toasts={toasts} />
+
+      {/* Obsidian Documentation & Specification Modal */}
+      <ObsidianDocModal
+        open={showObsidianModal}
+        onClose={() => setShowObsidianModal(false)}
+        vault={obsidianVault}
+        onSave={handleSaveObsidianVault}
+      />
     </div>
   )
 }

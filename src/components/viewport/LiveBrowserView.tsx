@@ -941,7 +941,7 @@ export function LiveBrowserView({
                   className={cn(
                     'relative flex flex-1 flex-col rounded-2xl border bg-ink-900 shadow-2xl overflow-hidden transition-all',
                     activeTarget === 'a' || activeTarget === 'both'
-                      ? 'border-iris-500/60 ring-2 ring-iris-500/40 shadow-[0_0_24px_rgba(99,84,240,0.25)]'
+                      ? 'border-iris-500/60 ring-2 ring-iris-500/40 shadow-[0_0_24px_rgba(74,91,49,0.4)]'
                       : 'border-white/[0.08] opacity-90',
                   )}
                 >

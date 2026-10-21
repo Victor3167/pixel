@@ -217,7 +217,7 @@ export function ViewPane(props: ViewPaneProps) {
           transform: `translate(${view.panX}px, ${view.panY}px) scale(${view.zoom})`,
           transformOrigin: '0 0',
           imageRendering: pixelated ? 'pixelated' : 'auto',
-          background: '#0b0c12',
+          background: '#050505',
           boxShadow: `0 0 0 ${1 / view.zoom}px rgb(255 255 255 / 0.18), 0 24px 80px rgb(0 0 0 / 0.5)`,
         }}
       >

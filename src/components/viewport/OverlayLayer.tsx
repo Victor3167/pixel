@@ -138,7 +138,7 @@ export function OverlayLayer({
           style={{ left: view.panX + split.px * view.zoom }}
           onPointerDown={split.onPointerDown}
         >
-          <div className="absolute top-0 bottom-0 left-1/2 w-px -translate-x-1/2 bg-white shadow-[0_0_0_1px_rgb(0_0_0/0.5),0_0_16px_rgb(255_43_214/0.8)]" />
+          <div className="absolute top-0 bottom-0 left-1/2 w-px -translate-x-1/2 bg-white shadow-[0_0_0_1px_rgb(0_0_0/0.5),0_0_16px_rgba(34,197,94,0.85)]" />
           <div className="absolute top-1/2 left-1/2 flex h-9 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/40 bg-ink-900/90 shadow-lg backdrop-blur">
             <div className="flex gap-[3px]">
               <span className="h-3 w-px bg-white/70" />

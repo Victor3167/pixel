@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Eye, EyeOff, KeyRound, Sparkles, TriangleAlert } from 'lucide-react'
+import { BookOpen, Eye, EyeOff, KeyRound, Sparkles, TriangleAlert } from 'lucide-react'
 import type { GeminiModel } from '../types/audit'
 import { GEMINI_MODELS } from '../utils/geminiVisionAudit'
 import { Button, Segmented, TextInput } from './ui'
@@ -14,9 +14,27 @@ interface AiControlsProps {
   canRun: boolean
   onRun: () => void
   error: string | null
+  onOpenObsidianDoc?: () => void
+  hasObsidianDoc?: boolean
+  obsidianDocTitle?: string
+  obsidianDocInAudit?: boolean
 }
 
-export function AiControls({ apiKey, onApiKey, envKeyAvailable, model, onModel, running, canRun, onRun, error }: AiControlsProps) {
+export function AiControls({
+  apiKey,
+  onApiKey,
+  envKeyAvailable,
+  model,
+  onModel,
+  running,
+  canRun,
+  onRun,
+  error,
+  onOpenObsidianDoc,
+  hasObsidianDoc,
+  obsidianDocTitle,
+  obsidianDocInAudit,
+}: AiControlsProps) {
   const [reveal, setReveal] = useState(false)
 
   return (
@@ -32,6 +50,31 @@ export function AiControls({ apiKey, onApiKey, envKeyAvailable, model, onModel, 
           options={GEMINI_MODELS.map((m) => ({ value: m.value, label: m.label, title: m.hint }))}
         />
       </div>
+
+      {/* Obsidian Doc spec status banner */}
+      {onOpenObsidianDoc && (
+        <div className="flex items-center justify-between rounded-lg border border-white/[0.08] bg-black/30 px-2.5 py-1.5 text-[11px]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <BookOpen size={13} className={hasObsidianDoc && obsidianDocInAudit ? 'text-military-400' : 'text-ink-400'} />
+            <span className="text-ink-300 font-medium">Doc Obsidian:</span>
+            <span className="truncate font-mono text-white text-[10.5px] max-w-[120px]">
+              {hasObsidianDoc ? (obsidianDocTitle || 'Doc ativo') : 'Nenhum'}
+            </span>
+            {hasObsidianDoc && obsidianDocInAudit && (
+              <span className="rounded bg-military-500/20 px-1 py-0.5 text-[9px] font-semibold text-military-300">
+                Ativo na IA
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onOpenObsidianDoc}
+            className="text-[10.5px] font-semibold text-military-300 hover:text-white hover:underline shrink-0 ml-2"
+          >
+            {hasObsidianDoc ? 'Editar' : '+ Anexar'}
+          </button>
+        </div>
+      )}
 
       <div className="relative">
         <KeyRound size={12} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-400" />

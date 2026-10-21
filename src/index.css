@@ -4,38 +4,47 @@
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Ink: layered near-black surfaces */
-  --color-ink-950: #06070b;
-  --color-ink-900: #0a0b11;
-  --color-ink-850: #0e0f17;
-  --color-ink-800: #12141e;
-  --color-ink-700: #191c2a;
-  --color-ink-600: #242839;
-  --color-ink-500: #343a52;
-  --color-ink-400: #4d5474;
-  --color-ink-300: #7b83a6;
-  --color-ink-200: #a8afcb;
-  --color-ink-100: #d3d7ea;
-  --color-ink-50: #eef0fa;
+  /* Ink: Obsidian & Zinc layered surfaces matching portfolio */
+  --color-ink-950: #050505;
+  --color-ink-900: #09090b;
+  --color-ink-850: #121215;
+  --color-ink-800: #18181b;
+  --color-ink-700: #202024;
+  --color-ink-600: #27272a;
+  --color-ink-500: #3f3f46;
+  --color-ink-400: #52525b;
+  --color-ink-300: #71717a;
+  --color-ink-200: #a1a1aa;
+  --color-ink-100: #d4d4d8;
+  --color-ink-50: #f4f4f5;
 
-  /* Iris: primary accent */
-  --color-iris-300: #b4abff;
-  --color-iris-400: #9588ff;
-  --color-iris-500: #7a6bff;
-  --color-iris-600: #6354f0;
+  /* Military Green: Victor's signature brand accent */
+  --color-iris-100: #e4eed8;
+  --color-iris-200: #c2d4ab;
+  --color-iris-300: #7b8f60;
+  --color-iris-400: #5f7142;
+  --color-iris-500: #4a5b31;
+  --color-iris-600: #3a4726;
 
-  /* Neon magenta: diff / issue accent */
-  --color-neon-300: #ff7eea;
-  --color-neon-400: #ff4fe0;
-  --color-neon-500: #ff2bd6;
+  --color-military-300: #7b8f60;
+  --color-military-400: #5f7142;
+  --color-military-500: #4a5b31;
+  --color-military-600: #3a4726;
+  --color-military-700: #2b351c;
+
+  /* Emerald / Spring Green: glow, live badges and highlights */
+  --color-neon-300: #86efac;
+  --color-neon-400: #4ade80;
+  --color-neon-500: #22c55e;
 
   --color-mint-400: #4ade9a;
   --color-amber-400: #fbbf24;
   --color-rose-400: #fb7185;
 
-  --shadow-float: 0 12px 40px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.06);
-  --shadow-glow-neon: 0 0 24px -4px rgb(255 43 214 / 0.55);
-  --shadow-glow-iris: 0 0 28px -6px rgb(122 107 255 / 0.65);
+  --shadow-float: 0 12px 40px -12px rgb(0 0 0 / 0.8), 0 0 0 1px rgb(255 255 255 / 0.07);
+  --shadow-glow-neon: 0 0 24px -4px rgb(34 197 94 / 0.45);
+  --shadow-glow-iris: 0 0 28px -6px rgb(95 113 66 / 0.55);
+  --shadow-military: 0 4px 20px -2px rgb(74 91 49 / 0.35);
 
   --animate-pop: pop 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2);
   --animate-slide-up: slide-up 0.22s ease-out;
@@ -55,8 +64,8 @@
     to { background-position: -200% 0; }
   }
   @keyframes pulse-ring {
-    0% { box-shadow: 0 0 0 0 rgb(255 43 214 / 0.55); }
-    100% { box-shadow: 0 0 0 10px rgb(255 43 214 / 0); }
+    0% { box-shadow: 0 0 0 0 rgb(34 197 94 / 0.55); }
+    100% { box-shadow: 0 0 0 10px rgb(34 197 94 / 0); }
   }
 }
 
@@ -79,20 +88,21 @@ body {
 }
 
 ::selection {
-  background: rgb(122 107 255 / 0.4);
+  background: rgb(95 113 66 / 0.45);
+  color: #fff;
 }
 
 /* Slim dark scrollbars (app chrome only) */
 .scroll-thin {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-ink-500) transparent;
+  scrollbar-color: var(--color-ink-600) transparent;
 }
 .scroll-thin::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 .scroll-thin::-webkit-scrollbar-thumb {
-  background: var(--color-ink-500);
+  background: var(--color-ink-600);
   border-radius: 8px;
   border: 2px solid transparent;
   background-clip: content-box;
@@ -109,25 +119,25 @@ body {
 
 /* Transparent-pixel checkerboard */
 .checker {
-  background-color: #14151f;
+  background-color: #0d0e12;
   background-image:
-    linear-gradient(45deg, #1b1d2b 25%, transparent 25%),
-    linear-gradient(-45deg, #1b1d2b 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #1b1d2b 75%),
-    linear-gradient(-45deg, transparent 75%, #1b1d2b 75%);
+    linear-gradient(45deg, #18181f 25%, transparent 25%),
+    linear-gradient(-45deg, #18181f 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #18181f 75%),
+    linear-gradient(-45deg, transparent 75%, #18181f 75%);
   background-size: 16px 16px;
   background-position: 0 0, 0 8px, 8px -8px, -8px 0;
 }
 
 /* Workspace backdrop: subtle dot grid */
 .workspace-bg {
-  background-color: var(--color-ink-900);
+  background-color: var(--color-ink-950);
   background-image: radial-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
 .glass {
-  background: rgb(14 15 23 / 0.78);
+  background: rgb(9 9 11 / 0.85);
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
   box-shadow: var(--shadow-float);

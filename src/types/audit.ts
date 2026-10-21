@@ -261,3 +261,34 @@ export interface CaptureSettings {
   manualDeviceScaleFactor: number
   localStorage?: Record<string, string>
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Obsidian / Markdown Documentation                                          */
+/* -------------------------------------------------------------------------- */
+
+export interface ObsidianFile {
+  id: string
+  name: string
+  path?: string
+  content: string
+  enabled: boolean
+  updatedAt: number
+}
+
+export interface ObsidianDocState {
+  files: ObsidianFile[]
+  activeFileId: string | null
+  useInAudit: boolean
+  useInPrompt: boolean
+  updatedAt: number
+}
+
+export interface ObsidianDoc {
+  title: string
+  content: string
+  updatedAt: number
+  useInAudit: boolean
+  useInPrompt: boolean
+}
+
+

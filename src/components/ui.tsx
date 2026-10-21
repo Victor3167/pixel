@@ -31,8 +31,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    'bg-gradient-to-b from-iris-500 to-iris-600 text-white shadow-[0_1px_0_0_rgb(255_255_255/0.25)_inset,0_6px_18px_-6px_rgb(99_84_240/0.8)] hover:from-iris-400 hover:to-iris-500',
-  neon: 'bg-gradient-to-r from-neon-500 to-iris-500 text-white shadow-[0_1px_0_0_rgb(255_255_255/0.3)_inset,0_8px_24px_-8px_rgb(255_43_214/0.7)] hover:brightness-110',
+    'bg-gradient-to-b from-military-500 to-military-600 text-white shadow-[0_1px_0_0_rgb(255_255_255/0.2)_inset,0_6px_20px_-4px_rgba(74,91,49,0.7)] hover:from-military-400 hover:to-military-500',
+  neon: 'bg-gradient-to-r from-military-600 via-emerald-600 to-emerald-500 text-white shadow-[0_1px_0_0_rgb(255_255_255/0.25)_inset,0_6px_20px_-4px_rgba(34,197,94,0.5)] hover:brightness-110',
   ghost: 'bg-transparent text-ink-200 hover:bg-white/[0.06] hover:text-white',
   subtle: 'border border-white/10 bg-white/[0.04] text-ink-100 hover:bg-white/[0.09] hover:border-white/20',
   danger: 'border border-rose-400/30 bg-rose-400/10 text-rose-300 hover:bg-rose-400/20',
@@ -124,7 +124,7 @@ export function Segmented<T extends string | number>({ value, options, onChange,
             onClick={() => onChange(option.value)}
             className={cn(
               'flex-1 rounded-md px-2.5 py-1 text-[11.5px] font-medium transition-all duration-150',
-              active ? 'bg-iris-500/90 text-white shadow-[0_2px_10px_-2px_rgb(99_84_240/0.8)]' : 'text-ink-300 hover:text-white',
+              active ? 'bg-iris-500 text-white shadow-[0_2px_10px_-2px_rgba(74,91,49,0.7)] font-medium' : 'text-ink-300 hover:text-white',
             )}
           >
             {option.label}
