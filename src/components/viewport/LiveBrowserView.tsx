@@ -78,8 +78,26 @@ export function LiveBrowserView({
   const [syncScroll, setSyncScroll] = useState<boolean>(true)
   const [scrollY, setScrollY] = useState<number>(0)
   const [offsetY, setOffsetY] = useState<number>(0) // Sub-pixel / calibration offset for Page B
-  const [virtualHeight] = useState<number>(5000) // Virtual height of content
-  const maxScroll = Math.max(0, virtualHeight - 800)
+  const [virtualHeight, setVirtualHeight] = useState<number>(18000) // Default 18,000px to cover long e-commerce pages
+  const [containerHeight, setContainerHeight] = useState<number>(850)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+    const update = () => {
+      if (containerRef.current) {
+        setContainerHeight(containerRef.current.clientHeight || 850)
+      }
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(containerRef.current)
+    return () => ro.disconnect()
+  }, [])
+
+  // In side-by-side mode, columns are ~50% narrower so content wraps and can be up to 2x taller
+  const effectiveVirtualHeight = mode === 'side' ? Math.max(virtualHeight, 22000) : virtualHeight
+  const maxScroll = Math.max(0, effectiveVirtualHeight - containerHeight)
 
   // Wheel sync overlay toggle
   const [wheelCaptureMode, setWheelCaptureMode] = useState<boolean>(false)
@@ -131,9 +149,19 @@ export function LiveBrowserView({
   /* -------------------------- Synchronized Scroll -------------------------- */
   const changeScroll = useCallback(
     (delta: number) => {
-      setScrollY((prev) => Math.max(0, Math.min(maxScroll, prev + delta)))
+      setScrollY((prev) => {
+        const next = Math.max(0, prev + delta)
+        // Auto-expand virtual height if user scrolls near or beyond current bottom
+        if (next + 1500 > effectiveVirtualHeight) {
+          const expanded = Math.min(80000, effectiveVirtualHeight + 6000)
+          setVirtualHeight(expanded)
+          const newMax = Math.max(0, expanded - containerHeight)
+          return Math.min(newMax, next)
+        }
+        return Math.min(maxScroll, next)
+      })
     },
-    [maxScroll],
+    [maxScroll, effectiveVirtualHeight, containerHeight],
   )
 
   const scrollToPercent = useCallback(
@@ -677,6 +705,34 @@ export function LiveBrowserView({
             ))}
           </div>
 
+          {/* Virtual Height Presets & Steppers */}
+          <div className="hidden xl:flex items-center rounded-lg bg-black/40 p-0.5 ring-1 ring-white/10" title="Altura do conteúdo para rolagem sincronizada">
+            <span className="px-1 text-[9.5px] text-ink-400">Altura:</span>
+            {[8000, 14000, 20000, 30000].map((h) => (
+              <button
+                key={h}
+                type="button"
+                onClick={() => setVirtualHeight(h)}
+                className={cn(
+                  'rounded px-1.5 py-0.5 text-[9.5px] font-mono transition-colors',
+                  virtualHeight === h
+                    ? 'bg-neon-500/20 text-neon-300 font-bold ring-1 ring-neon-500/40'
+                    : 'text-ink-400 hover:text-white hover:bg-white/5',
+                )}
+              >
+                {h / 1000}k
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setVirtualHeight((h) => Math.min(80000, h + 5000))}
+              title="Aumentar altura em +5000px"
+              className="rounded px-1.5 py-0.5 text-[9.5px] text-ink-300 hover:text-white hover:bg-white/10 font-bold"
+            >
+              +5k
+            </button>
+          </div>
+
           {/* Snapshot Capture Button */}
           <Button
             id="capture-live-both-btn"
@@ -697,6 +753,7 @@ export function LiveBrowserView({
       {/*  Live Viewport (Stacked or Side-by-Side)                             */}
       {/* ==================================================================== */}
       <div
+        ref={containerRef}
         onWheel={handleWheel}
         className="relative flex min-h-0 flex-1 overflow-hidden p-2.5 bg-ink-950 gap-2"
       >
@@ -774,7 +831,7 @@ export function LiveBrowserView({
                     position: 'absolute',
                     inset: 0,
                     width: '100%',
-                    height: syncScroll ? `${virtualHeight}px` : '100%',
+                    height: syncScroll ? `${effectiveVirtualHeight}px` : '100%',
                     transform: syncScroll ? `translateY(-${scrollY}px)` : undefined,
                     zIndex:
                       mode === 'blink'
@@ -824,7 +881,7 @@ export function LiveBrowserView({
                     position: 'absolute',
                     inset: 0,
                     width: '100%',
-                    height: syncScroll ? `${virtualHeight}px` : '100%',
+                    height: syncScroll ? `${effectiveVirtualHeight}px` : '100%',
                     transform: syncScroll ? `translateY(-${scrollY + offsetY}px)` : undefined,
                     zIndex:
                       mode === 'blink'
@@ -961,7 +1018,7 @@ export function LiveBrowserView({
                         position: 'absolute',
                         inset: 0,
                         width: '100%',
-                        height: syncScroll ? `${virtualHeight}px` : '100%',
+                        height: syncScroll ? `${effectiveVirtualHeight}px` : '100%',
                         transform: syncScroll ? `translateY(-${scrollY}px)` : undefined,
                       }}
                     >
@@ -1048,7 +1105,7 @@ export function LiveBrowserView({
                         position: 'absolute',
                         inset: 0,
                         width: '100%',
-                        height: syncScroll ? `${virtualHeight}px` : '100%',
+                        height: syncScroll ? `${effectiveVirtualHeight}px` : '100%',
                         transform: syncScroll ? `translateY(-${scrollY + offsetY}px)` : undefined,
                       }}
                     >
@@ -1121,6 +1178,16 @@ export function LiveBrowserView({
               className="mt-1 font-mono text-[9px] text-ink-400 hover:text-white -rotate-90 select-none"
             >
               {Math.round(scrollPct)}%
+            </button>
+
+            {/* Jump directly to End of page */}
+            <button
+              type="button"
+              onClick={() => setScrollY(maxScroll)}
+              title="Rolar direto para o Fim da Página (Rodapé)"
+              className="mt-1 rounded px-1 py-0.5 text-[8.5px] font-bold text-ink-400 hover:text-white hover:bg-white/10"
+            >
+              Fim
             </button>
           </div>
         )}
