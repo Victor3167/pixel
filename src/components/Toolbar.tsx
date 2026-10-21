@@ -48,13 +48,13 @@ export function Toolbar(props: ToolbarProps) {
 
   return (
     <div
-      className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.08] bg-ink-950/90 px-3 backdrop-blur-md z-20 select-none overflow-x-auto scroll-thin gap-3"
+      className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.08] bg-ink-950/90 px-3 backdrop-blur-md z-20 select-none overflow-x-auto no-scrollbar gap-3"
       role="toolbar"
       aria-label="Controles de inspeção e diff"
     >
       {/* Left: Inspection Mode Segmented + Tools */}
-      <div className="flex items-center gap-2">
-        <div className="flex items-center rounded-lg bg-black/50 p-0.5 ring-1 ring-white/10">
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center rounded-lg bg-black/50 p-0.5 ring-1 ring-white/10 shrink-0">
           {CANVAS_MODES.map(({ value, label, key, icon: Icon, hint }) => (
             <button
               key={value}
@@ -63,22 +63,22 @@ export function Toolbar(props: ToolbarProps) {
               title={`${hint} (${key})`}
               onClick={() => props.onModeChange(value)}
               className={cn(
-                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium transition-all duration-150',
+                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium whitespace-nowrap shrink-0 transition-all duration-150',
                 mode === value
                   ? 'bg-iris-500 text-white shadow-sm font-semibold'
                   : 'text-ink-300 hover:bg-white/[0.06] hover:text-white',
               )}
             >
-              <Icon size={12.5} />
+              <Icon size={12.5} className="shrink-0" />
               <span>{label}</span>
               <Kbd className={cn(mode === value && 'border-white/25 bg-black/25 text-white/90')}>{key}</Kbd>
             </button>
           ))}
         </div>
 
-        <span className="h-4 w-px bg-white/10" />
+        <span className="h-4 w-px bg-white/10 shrink-0" />
 
-        <div className="flex items-center rounded-lg bg-black/50 p-0.5 ring-1 ring-white/10">
+        <div className="flex items-center rounded-lg bg-black/50 p-0.5 ring-1 ring-white/10 shrink-0">
           {TOOLS.map(({ value, label, key, icon: Icon }) => (
             <button
               key={value}
@@ -87,13 +87,13 @@ export function Toolbar(props: ToolbarProps) {
               title={`${label} (${key})`}
               onClick={() => props.onToolChange(value)}
               className={cn(
-                'flex h-7 items-center gap-1.5 rounded-md px-2 text-[11.5px] transition-all duration-150',
+                'flex h-7 items-center gap-1.5 rounded-md px-2 text-[11.5px] whitespace-nowrap shrink-0 transition-all duration-150',
                 tool === value
                   ? 'bg-neon-500/20 text-neon-300 ring-1 ring-neon-500/40 font-semibold'
                   : 'text-ink-400 hover:bg-white/[0.06] hover:text-white',
               )}
             >
-              <Icon size={13} />
+              <Icon size={13} className="shrink-0" />
               <Kbd>{key}</Kbd>
             </button>
           ))}
@@ -101,7 +101,7 @@ export function Toolbar(props: ToolbarProps) {
       </div>
 
       {/* Right: Contextual Controls for active inspection mode */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 shrink-0">
         {!hasBoth && (
           <span className="text-[11px] text-ink-400">Carregue um Design e uma Implementação para comparar</span>
         )}

@@ -8,6 +8,7 @@ import {
   KeyRound,
   Layers,
   Lock,
+  Monitor,
   MousePointer,
   MoveVertical,
   RefreshCw,
@@ -391,23 +392,23 @@ export function LiveBrowserView({
       {/* ==================================================================== */}
       <div
         onWheel={handleWheel}
-        className="z-30 flex h-11 shrink-0 items-center justify-between gap-2.5 border-b border-white/[0.08] bg-ink-950/95 px-3 backdrop-blur-md select-none overflow-x-auto scroll-thin"
+        className="z-30 flex h-11 shrink-0 items-center justify-between gap-2 border-b border-white/[0.08] bg-ink-950/95 px-3 backdrop-blur-md select-none overflow-x-auto no-scrollbar"
       >
         {/* Left: Comparison Mode + Target Selector */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Comparison Mode Selector */}
-          <div className="flex items-center rounded-lg bg-black/50 p-0.5 ring-1 ring-white/10" role="group" aria-label="Modos de comparação ao vivo">
+          <div className="flex items-center rounded-lg bg-black/50 p-0.5 ring-1 ring-white/10 shrink-0" role="group" aria-label="Modos de comparação ao vivo">
             <button
               type="button"
               id="live-mode-split"
               onClick={() => setMode('split')}
               title="Cortina Divisória: Páginas sobrepostas com divisor deslizante"
               className={cn(
-                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium transition-all duration-150',
+                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium whitespace-nowrap shrink-0 transition-all duration-150',
                 mode === 'split' ? 'bg-iris-500 text-white shadow-sm font-semibold' : 'text-ink-300 hover:text-white hover:bg-white/[0.06]',
               )}
             >
-              <SplitSquareVertical size={13} />
+              <SplitSquareVertical size={13} className="shrink-0" />
               <span>Cortina</span>
             </button>
 
@@ -417,11 +418,11 @@ export function LiveBrowserView({
               onClick={() => setMode('side')}
               title="Lado a Lado: Ambas as páginas em paralelo"
               className={cn(
-                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium transition-all duration-150',
+                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium whitespace-nowrap shrink-0 transition-all duration-150',
                 mode === 'side' ? 'bg-iris-500 text-white shadow-sm font-semibold' : 'text-ink-300 hover:text-white hover:bg-white/[0.06]',
               )}
             >
-              <Columns2 size={13} />
+              <Columns2 size={13} className="shrink-0" />
               <span>Lado a Lado</span>
             </button>
 
@@ -431,11 +432,11 @@ export function LiveBrowserView({
               onClick={() => setMode('onion')}
               title="Onion Skin: Páginas sobrepostas com transparência"
               className={cn(
-                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium transition-all duration-150',
+                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium whitespace-nowrap shrink-0 transition-all duration-150',
                 mode === 'onion' ? 'bg-iris-500 text-white shadow-sm font-semibold' : 'text-ink-300 hover:text-white hover:bg-white/[0.06]',
               )}
             >
-              <Layers size={13} />
+              <Layers size={13} className="shrink-0" />
               <span>Onion</span>
             </button>
 
@@ -445,27 +446,27 @@ export function LiveBrowserView({
               onClick={() => setMode('blink')}
               title="Blink: Segure espaço para alternar entre as duas páginas"
               className={cn(
-                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium transition-all duration-150',
+                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium whitespace-nowrap shrink-0 transition-all duration-150',
                 mode === 'blink' ? 'bg-iris-500 text-white shadow-sm font-semibold' : 'text-ink-300 hover:text-white hover:bg-white/[0.06]',
               )}
             >
-              <Zap size={13} />
+              <Zap size={13} className="shrink-0" />
               <span>Blink</span>
             </button>
           </div>
 
-          <span className="h-4 w-px bg-white/10" />
+          <span className="hidden sm:inline-block h-4 w-px bg-white/10 shrink-0" />
 
           {/* Interactive Target: Ambas | A | B */}
-          <div className="flex items-center rounded-lg bg-black/50 p-0.5 ring-1 ring-white/10" role="group" aria-label="Página para interagir">
-            <span className="px-1.5 text-[10.5px] font-medium text-ink-400">Interagir:</span>
+          <div className="flex items-center rounded-lg bg-black/50 p-0.5 ring-1 ring-white/10 shrink-0" role="group" aria-label="Página para interagir">
+            <span className="hidden xl:inline px-1.5 text-[10.5px] font-medium text-ink-400 whitespace-nowrap">Interagir:</span>
             <button
               type="button"
               id="control-target-both"
               onClick={() => setActiveTarget('both')}
               title="Interagir com ambas as páginas simultaneamente"
               className={cn(
-                'flex h-6.5 items-center rounded px-2 text-[11px] font-medium transition-all duration-150',
+                'flex h-6.5 items-center rounded px-2 text-[11px] font-medium whitespace-nowrap shrink-0 transition-all duration-150',
                 activeTarget === 'both'
                   ? 'bg-gradient-to-r from-iris-500 to-neon-500 text-white font-semibold shadow-xs'
                   : 'text-ink-300 hover:bg-white/[0.06] hover:text-white',
@@ -479,13 +480,13 @@ export function LiveBrowserView({
               onClick={() => setActiveTarget('a')}
               title="Interagir na Página A (Referência)"
               className={cn(
-                'flex h-6.5 items-center gap-1 rounded px-2 text-[11px] font-medium transition-all duration-150',
+                'flex h-6.5 items-center gap-1 rounded px-2 text-[11px] font-medium whitespace-nowrap shrink-0 transition-all duration-150',
                 activeTarget === 'a'
                   ? 'bg-iris-500 text-white font-semibold shadow-xs'
                   : 'text-ink-300 hover:bg-white/[0.06] hover:text-white',
               )}
             >
-              <span className="size-1.5 rounded-full bg-iris-300" />
+              <span className="size-1.5 rounded-full bg-iris-300 shrink-0" />
               <span>A</span>
             </button>
             <button
@@ -494,23 +495,23 @@ export function LiveBrowserView({
               onClick={() => setActiveTarget('b')}
               title="Interagir na Página B (Localhost)"
               className={cn(
-                'flex h-6.5 items-center gap-1 rounded px-2 text-[11px] font-medium transition-all duration-150',
+                'flex h-6.5 items-center gap-1 rounded px-2 text-[11px] font-medium whitespace-nowrap shrink-0 transition-all duration-150',
                 activeTarget === 'b'
                   ? 'bg-neon-500 text-black font-semibold shadow-xs'
                   : 'text-ink-300 hover:bg-white/[0.06] hover:text-white',
               )}
             >
-              <span className="size-1.5 rounded-full bg-black" />
+              <span className="size-1.5 rounded-full bg-black shrink-0" />
               <span>B</span>
             </button>
           </div>
         </div>
 
         {/* Center: Synchronized Route Navigator */}
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-center rounded-lg bg-black/60 px-2 py-0.5 ring-1 ring-white/10">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center rounded-lg bg-black/60 px-2 py-0.5 ring-1 ring-white/10 shrink-0">
             <Compass size={12} className="text-neon-400 mr-1.5 shrink-0" />
-            <span className="font-mono text-ink-500 mr-0.5 text-[11px]">/</span>
+            <span className="font-mono text-ink-500 mr-0.5 text-[11px] shrink-0">/</span>
             <input
               type="text"
               value={sharedRouteInput.startsWith('/') ? sharedRouteInput.slice(1) : sharedRouteInput}
@@ -521,26 +522,26 @@ export function LiveBrowserView({
                 }
               }}
               placeholder="rota (ex: produtos)..."
-              className="w-28 md:w-40 bg-transparent font-mono text-[11px] text-white placeholder-ink-500 outline-none"
+              className="w-24 md:w-32 xl:w-40 bg-transparent font-mono text-[11px] text-white placeholder-ink-500 outline-none"
             />
             <button
               type="button"
               onClick={() => handleNavigateBoth(sharedRouteInput)}
-              className="ml-1 rounded bg-neon-500/20 px-1.5 py-0.5 text-[10px] font-bold text-neon-300 hover:bg-neon-500/30 transition-colors"
+              className="ml-1 rounded bg-neon-500/20 px-1.5 py-0.5 text-[10px] font-bold text-neon-300 hover:bg-neon-500/30 transition-colors shrink-0 whitespace-nowrap"
             >
               Ir
             </button>
           </div>
 
-          {/* Quick Route Chips */}
-          <div className="hidden sm:flex items-center gap-1">
+          {/* Quick Route Chips (visible on wide screens) */}
+          <div className="hidden 2xl:flex items-center gap-1 shrink-0">
             {COMMON_ROUTES.slice(0, 4).map((route) => (
               <button
                 key={route.path}
                 type="button"
                 onClick={() => handleNavigateBoth(route.path)}
                 className={cn(
-                  'rounded-md px-2 py-0.5 text-[10.5px] transition-all',
+                  'rounded-md px-2 py-0.5 text-[10.5px] whitespace-nowrap shrink-0 transition-all',
                   pathA === route.path && pathB === route.path
                     ? 'bg-neon-500/20 text-neon-300 ring-1 ring-neon-500/40 font-semibold'
                     : 'bg-white/[0.04] text-ink-300 hover:bg-white/[0.08] hover:text-white',
@@ -556,29 +557,29 @@ export function LiveBrowserView({
             id="quick-login-option-a"
             onClick={handleAutoLoginOptionA}
             title="Injeta token de autenticação na Opção A para acessar o protótipo"
-            className="flex h-6.5 items-center gap-1 rounded-md border border-iris-500/30 bg-iris-500/10 px-2 text-[10.5px] font-medium text-iris-200 hover:bg-iris-500/20 hover:text-white transition-all"
+            className="flex h-6.5 items-center gap-1 rounded-md border border-iris-500/30 bg-iris-500/10 px-2 text-[10.5px] font-medium text-iris-200 hover:bg-iris-500/20 hover:text-white transition-all shrink-0 whitespace-nowrap"
           >
-            <KeyRound size={11} className="text-iris-400" />
-            <span className="hidden xl:inline">Login A</span>
+            <KeyRound size={11} className="text-iris-400 shrink-0" />
+            <span className="hidden sm:inline">Login A</span>
           </button>
         </div>
 
-        {/* Right: Contextual Controls & Device Preset & Capture CTA */}
-        <div className="flex items-center gap-2">
+        {/* Right: Contextual Controls & Presets & Capture CTA */}
+        <div className="flex items-center gap-2 shrink-0">
           {/* Mode Contextual Controls */}
           {mode === 'split' && (
             <button
               type="button"
               onClick={() => setSplitPos(50)}
               title="Centralizar divisor em 50%"
-              className="hidden md:inline-flex rounded bg-white/10 px-2 py-0.5 text-[10px] text-ink-200 hover:bg-white/20 hover:text-white"
+              className="hidden 2xl:inline-flex rounded bg-white/10 px-2 py-0.5 text-[10px] text-ink-200 hover:bg-white/20 hover:text-white whitespace-nowrap shrink-0"
             >
               Centralizar 50%
             </button>
           )}
 
           {mode === 'onion' && (
-            <div className="hidden md:flex items-center gap-2 text-[10.5px]">
+            <div className="hidden md:flex items-center gap-2 text-[10.5px] shrink-0 whitespace-nowrap">
               <input
                 type="range"
                 min="0"
@@ -594,7 +595,7 @@ export function LiveBrowserView({
           )}
 
           {mode === 'blink' && (
-            <div className="hidden md:flex items-center gap-1.5 text-[10.5px]">
+            <div className="hidden md:flex items-center gap-1.5 text-[10.5px] shrink-0 whitespace-nowrap">
               <span className="text-ink-400">Segure <Kbd>Espaço</Kbd></span>
               <span
                 className={cn(
@@ -608,7 +609,7 @@ export function LiveBrowserView({
           )}
 
           {/* Sub-pixel Calibration Offset Y */}
-          <div className="hidden xl:flex items-center gap-1 rounded bg-black/40 px-1 py-0.5 ring-1 ring-white/10">
+          <div className="hidden 2xl:flex items-center gap-1 rounded bg-black/40 px-1.5 py-0.5 ring-1 ring-white/10 shrink-0 whitespace-nowrap">
             <span className="text-[10px] text-ink-400 px-0.5">Offset B:</span>
             <button
               type="button"
@@ -648,13 +649,13 @@ export function LiveBrowserView({
             onClick={() => setSyncScroll((s) => !s)}
             title={syncScroll ? 'Rolagem sincronizada ativa (ambos acompanham juntos)' : 'Rolagem desincronizada'}
             className={cn(
-              'flex h-7 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium transition-all',
+              'flex h-7 items-center gap-1.5 rounded-md px-2 text-[10.5px] font-medium transition-all shrink-0 whitespace-nowrap',
               syncScroll
                 ? 'bg-neon-500/15 text-neon-300 ring-1 ring-neon-500/40'
                 : 'bg-white/5 text-ink-400 hover:text-white',
             )}
           >
-            {syncScroll ? <Lock size={11} className="text-neon-400" /> : <Unlock size={11} />}
+            {syncScroll ? <Lock size={12} className="text-neon-400 shrink-0" /> : <Unlock size={12} className="shrink-0" />}
             <span className="hidden xl:inline">{syncScroll ? 'Sincronizado' : 'Livre'}</span>
           </button>
 
@@ -668,69 +669,54 @@ export function LiveBrowserView({
                 : 'Modo Clicar: o mouse clica e navega na página'
             }
             className={cn(
-              'flex h-7 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium transition-all',
+              'flex h-7 items-center gap-1.5 rounded-md px-2 text-[10.5px] font-medium transition-all shrink-0 whitespace-nowrap',
               wheelCaptureMode
                 ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/50'
                 : 'bg-white/5 text-ink-400 hover:text-white',
             )}
           >
-            {wheelCaptureMode ? <MoveVertical size={11} /> : <MousePointer size={11} />}
+            {wheelCaptureMode ? <MoveVertical size={12} className="shrink-0" /> : <MousePointer size={12} className="shrink-0" />}
             <span className="hidden xl:inline">{wheelCaptureMode ? 'Rolar' : 'Clicar'}</span>
           </button>
 
-          {/* Device Width Presets */}
-          <div className="hidden lg:flex items-center rounded-lg bg-black/40 p-0.5 ring-1 ring-white/10">
-            {(
-              [
-                { id: 'fluid', label: 'Fluido' },
-                { id: '1440', label: '1440' },
-                { id: '1280', label: '1280' },
-                { id: '768', label: '768' },
-                { id: '390', label: '390' },
-              ] as const
-            ).map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => setDevicePreset(preset.id)}
-                className={cn(
-                  'rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors',
-                  devicePreset === preset.id
-                    ? 'bg-iris-500 text-white font-bold'
-                    : 'text-ink-400 hover:text-white hover:bg-white/5',
-                )}
-              >
-                {preset.label}
-              </button>
-            ))}
+          {/* Device Width Presets - Sleek Compact Dropdown */}
+          <div className="flex items-center gap-1 rounded-lg bg-black/50 px-2 h-7 ring-1 ring-white/10 shrink-0 text-[11px]" title="Largura de tela simulada">
+            <Monitor size={12} className="text-ink-400 shrink-0" />
+            <select
+              id="device-preset-select"
+              value={devicePreset}
+              onChange={(e) => setDevicePreset(e.target.value as DevicePreset)}
+              className="bg-transparent text-ink-200 font-medium text-[10.5px] outline-none cursor-pointer pr-1"
+            >
+              <option value="fluid" className="bg-ink-900 text-ink-100">Fluido (100%)</option>
+              <option value="1440" className="bg-ink-900 text-ink-100">1440px</option>
+              <option value="1280" className="bg-ink-900 text-ink-100">1280px</option>
+              <option value="768" className="bg-ink-900 text-ink-100">768px</option>
+              <option value="390" className="bg-ink-900 text-ink-100">390px</option>
+            </select>
           </div>
 
-          {/* Virtual Height Presets & Steppers */}
-          <div className="hidden xl:flex items-center rounded-lg bg-black/40 p-0.5 ring-1 ring-white/10" title="Altura do conteúdo para rolagem sincronizada">
-            <span className="px-1 text-[9.5px] text-ink-400">Altura:</span>
-            {[8000, 14000, 20000, 30000].map((h) => (
-              <button
-                key={h}
-                type="button"
-                onClick={() => setVirtualHeight(h)}
-                className={cn(
-                  'rounded px-1.5 py-0.5 text-[9.5px] font-mono transition-colors',
-                  virtualHeight === h
-                    ? 'bg-neon-500/20 text-neon-300 font-bold ring-1 ring-neon-500/40'
-                    : 'text-ink-400 hover:text-white hover:bg-white/5',
-                )}
-              >
-                {h / 1000}k
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => setVirtualHeight((h) => Math.min(80000, h + 5000))}
-              title="Aumentar altura em +5000px"
-              className="rounded px-1.5 py-0.5 text-[9.5px] text-ink-300 hover:text-white hover:bg-white/10 font-bold"
+          {/* Virtual Height Presets - Sleek Compact Dropdown */}
+          <div className="hidden lg:flex items-center gap-1 rounded-lg bg-black/50 px-2 h-7 ring-1 ring-white/10 shrink-0 text-[11px]" title="Altura virtual do scroll sincronizado">
+            <span className="text-[10px] text-ink-400 shrink-0">Alt:</span>
+            <select
+              id="virtual-height-select"
+              value={virtualHeight}
+              onChange={(e) => setVirtualHeight(Number(e.target.value))}
+              className="bg-transparent text-neon-300 font-mono text-[10.5px] outline-none cursor-pointer pr-1 font-semibold"
             >
-              +5k
-            </button>
+              <option value="8000" className="bg-ink-900 text-ink-100">8k px</option>
+              <option value="14000" className="bg-ink-900 text-ink-100">14k px</option>
+              <option value="20000" className="bg-ink-900 text-ink-100">20k px</option>
+              <option value="30000" className="bg-ink-900 text-ink-100">30k px</option>
+              <option value="50000" className="bg-ink-900 text-ink-100">50k px</option>
+              <option value="80000" className="bg-ink-900 text-ink-100">80k px</option>
+              {!([8000, 14000, 20000, 30000, 50000, 80000].includes(virtualHeight)) && (
+                <option value={virtualHeight} className="bg-ink-900 text-neon-300">
+                  {Math.round(virtualHeight / 1000)}k px
+                </option>
+              )}
+            </select>
           </div>
 
           {/* Snapshot Capture Button */}
@@ -740,9 +726,9 @@ export function LiveBrowserView({
             size="sm"
             onClick={onCaptureBoth}
             loading={capturingBoth}
-            icon={<Camera size={12} className="text-black" />}
+            icon={<Camera size={12} className="text-black shrink-0" />}
             title="Capturar telas e analisar no Pixel Diff e Gemini IA"
-            className="font-bold shadow-[0_0_16px_rgba(20,241,149,0.3)] h-7 text-[11px]"
+            className="font-bold shadow-[0_0_16px_rgba(20,241,149,0.3)] h-7 text-[11px] shrink-0 whitespace-nowrap"
           >
             {capturingBoth ? 'Capturando…' : '📸 Capturar para Diff'}
           </Button>
