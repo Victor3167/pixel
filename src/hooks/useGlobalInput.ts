@@ -15,6 +15,8 @@ export interface ShortcutHandlers {
   onBlink: (showDesign: boolean) => void
   onDeleteSelected: () => void
   onEscape: () => void
+  onToggleLeftPanel?: () => void
+  onToggleRightPanel?: () => void
 }
 
 const MODE_KEYS: Record<string, InspectionMode> = {
@@ -40,6 +42,18 @@ export function useShortcuts(handlers: ShortcutHandlers): void {
     const onKeyDown = (event: KeyboardEvent) => {
       const h = ref.current
       if (isTypingTarget(event.target)) return
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
+        event.preventDefault()
+        h.onToggleLeftPanel?.()
+        return
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'i') {
+        event.preventDefault()
+        h.onToggleRightPanel?.()
+        return
+      }
+
       if (event.ctrlKey || event.metaKey || event.altKey) return
 
       if (event.code === 'Space') {

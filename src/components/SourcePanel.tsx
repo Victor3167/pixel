@@ -1,4 +1,4 @@
-import { Crosshair, Globe, Monitor, Palette, Sparkles } from 'lucide-react'
+import { Crosshair, Globe, Monitor, Palette, PanelLeftClose, Sparkles } from 'lucide-react'
 import type { CaptureMeta, CaptureSettings, DesignScale, LoadedImage, PasteTarget, Point } from '../types/audit'
 import type { ResolvedViewport } from '../utils/captureParams'
 import { CalibrationPanel } from './CalibrationPanel'
@@ -46,6 +46,9 @@ interface SourcePanelProps {
   /* Live Browser Navigation */
   onOpenLiveMode?: () => void
   isLiveMode?: boolean
+
+  /* Panel Collapse */
+  onClose?: () => void
 }
 
 export function SourcePanel(props: SourcePanelProps) {
@@ -55,8 +58,26 @@ export function SourcePanel(props: SourcePanelProps) {
   return (
     <aside
       id="source-panel"
-      className="scroll-thin flex w-[330px] shrink-0 flex-col overflow-y-auto border-r border-white/[0.06] bg-ink-900"
+      className="scroll-thin flex w-[320px] shrink-0 flex-col overflow-y-auto border-r border-white/[0.08] bg-ink-950 transition-all duration-200 z-10"
     >
+      {/* Header with Title & Collapse Button */}
+      <div className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.08] px-3 bg-ink-900/50">
+        <span className="text-[12px] font-semibold tracking-wide text-white flex items-center gap-2">
+          <Monitor size={13} className="text-iris-400" />
+          <span>Fontes &amp; Captura</span>
+        </span>
+        {props.onClose && (
+          <button
+            type="button"
+            onClick={props.onClose}
+            title="Recolher painel (Ctrl+B)"
+            className="flex size-6 items-center justify-center rounded text-ink-400 hover:bg-white/[0.08] hover:text-white transition-colors"
+          >
+            <PanelLeftClose size={13} />
+          </button>
+        )}
+      </div>
+
       {/* Live Navigation & Quick Both-Capture Actions */}
       <div className="border-b border-white/[0.06] p-3 space-y-2">
         <Button

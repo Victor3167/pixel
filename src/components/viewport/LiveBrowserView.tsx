@@ -2,8 +2,6 @@ import {
   ArrowDown,
   ArrowUp,
   Camera,
-  ChevronDown,
-  ChevronUp,
   Columns2,
   Compass,
   ExternalLink,
@@ -34,13 +32,7 @@ const COMMON_ROUTES = [
   { label: 'Minha Conta', path: '/minha-conta' },
 ]
 
-const SCROLL_PRESETS = [
-  { label: 'Topo', pct: 0 },
-  { label: '25%', pct: 0.25 },
-  { label: '50%', pct: 0.5 },
-  { label: '75%', pct: 0.75 },
-  { label: 'Fim', pct: 1 },
-]
+
 
 interface LiveBrowserViewProps {
   designSettings: CaptureSettings
@@ -86,7 +78,7 @@ export function LiveBrowserView({
   const [syncScroll, setSyncScroll] = useState<boolean>(true)
   const [scrollY, setScrollY] = useState<number>(0)
   const [offsetY, setOffsetY] = useState<number>(0) // Sub-pixel / calibration offset for Page B
-  const [virtualHeight, setVirtualHeight] = useState<number>(5000) // Virtual height of content
+  const [virtualHeight] = useState<number>(5000) // Virtual height of content
   const maxScroll = Math.max(0, virtualHeight - 800)
 
   // Wheel sync overlay toggle
@@ -367,80 +359,24 @@ export function LiveBrowserView({
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-ink-950 font-sans text-ink-100 select-none">
       {/* ==================================================================== */}
-      {/*  Top Live Control Bar                                                */}
+      {/*  Unified Single Live Control Bar                                     */}
       {/* ==================================================================== */}
-      <div className="z-30 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.08] bg-ink-900/95 px-4 py-2 backdrop-blur-md shadow-lg">
-        {/* Left: Active Page Selector ("Escolher qual página mexer") */}
+      <div
+        onWheel={handleWheel}
+        className="z-30 flex h-11 shrink-0 items-center justify-between gap-2.5 border-b border-white/[0.08] bg-ink-950/95 px-3 backdrop-blur-md select-none overflow-x-auto scroll-thin"
+      >
+        {/* Left: Comparison Mode + Target Selector */}
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold tracking-wider text-ink-300 uppercase">
-            Mexer na Página:
-          </span>
-          <div className="glass flex items-center rounded-xl p-0.5" role="group" aria-label="Página para interagir">
-            <button
-              type="button"
-              id="control-target-a"
-              onClick={() => setActiveTarget('a')}
-              title="Interagir e navegar na Página A (Referência / Login) [Alt+A]"
-              className={cn(
-                'flex h-7.5 items-center gap-1.5 rounded-lg px-2.5 text-[11.5px] font-medium transition-all duration-150',
-                activeTarget === 'a'
-                  ? 'bg-iris-500 text-white shadow-[0_0_16px_rgba(99,84,240,0.6)]'
-                  : 'text-ink-200 hover:bg-white/[0.07] hover:text-white',
-              )}
-            >
-              <span className="size-2 rounded-full bg-iris-300 animate-pulse" />
-              <span>A: Referência</span>
-              <Kbd className="text-[9px]">Alt+A</Kbd>
-            </button>
-
-            <button
-              type="button"
-              id="control-target-b"
-              onClick={() => setActiveTarget('b')}
-              title="Interagir e navegar na Página B (Localhost / Front) [Alt+B]"
-              className={cn(
-                'flex h-7.5 items-center gap-1.5 rounded-lg px-2.5 text-[11.5px] font-medium transition-all duration-150',
-                activeTarget === 'b'
-                  ? 'bg-neon-500 text-black shadow-[0_0_16px_rgba(20,241,149,0.6)]'
-                  : 'text-ink-200 hover:bg-white/[0.07] hover:text-white',
-              )}
-            >
-              <span className="size-2 rounded-full bg-neon-300 animate-pulse" />
-              <span>B: Localhost</span>
-              <Kbd className="text-[9px]">Alt+B</Kbd>
-            </button>
-
-            <button
-              type="button"
-              id="control-target-both"
-              onClick={() => setActiveTarget('both')}
-              title="Interagir com ambas as páginas simultaneamente"
-              className={cn(
-                'flex h-7.5 items-center gap-1.5 rounded-lg px-2.5 text-[11.5px] font-medium transition-all duration-150',
-                activeTarget === 'both'
-                  ? 'bg-gradient-to-r from-iris-500 to-neon-500 text-white font-semibold shadow-md'
-                  : 'text-ink-200 hover:bg-white/[0.07] hover:text-white',
-              )}
-            >
-              <span>Ambas</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Center-Left: Comparison Mode Switcher ("Um em cima do outro para comparar") */}
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold tracking-wider text-ink-300 uppercase">
-            Comparação:
-          </span>
-          <div className="glass flex items-center rounded-xl p-0.5" role="group" aria-label="Modos de comparação ao vivo">
+          {/* Comparison Mode Selector */}
+          <div className="flex items-center rounded-lg bg-black/50 p-0.5 ring-1 ring-white/10" role="group" aria-label="Modos de comparação ao vivo">
             <button
               type="button"
               id="live-mode-split"
               onClick={() => setMode('split')}
-              title="Cortina Divisória: Páginas sobrepostas com divisor deslizante sincronizado"
+              title="Cortina Divisória: Páginas sobrepostas com divisor deslizante"
               className={cn(
-                'flex h-7.5 items-center gap-1.5 rounded-lg px-2.5 text-[11.5px] font-medium transition-all',
-                mode === 'split' ? 'bg-iris-500 text-white shadow-md' : 'text-ink-300 hover:text-white hover:bg-white/[0.07]',
+                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium transition-all duration-150',
+                mode === 'split' ? 'bg-iris-500 text-white shadow-sm font-semibold' : 'text-ink-300 hover:text-white hover:bg-white/[0.06]',
               )}
             >
               <SplitSquareVertical size={13} />
@@ -449,40 +385,12 @@ export function LiveBrowserView({
 
             <button
               type="button"
-              id="live-mode-onion"
-              onClick={() => setMode('onion')}
-              title="Onion Skin: Páginas sobrepostas uma em cima da outra com opacidade"
-              className={cn(
-                'flex h-7.5 items-center gap-1.5 rounded-lg px-2.5 text-[11.5px] font-medium transition-all',
-                mode === 'onion' ? 'bg-iris-500 text-white shadow-md' : 'text-ink-300 hover:text-white hover:bg-white/[0.07]',
-              )}
-            >
-              <Layers size={13} />
-              <span>Onion Skin</span>
-            </button>
-
-            <button
-              type="button"
-              id="live-mode-blink"
-              onClick={() => setMode('blink')}
-              title="Blink: Segure a barra de espaço para alternar entre as duas páginas"
-              className={cn(
-                'flex h-7.5 items-center gap-1.5 rounded-lg px-2.5 text-[11.5px] font-medium transition-all',
-                mode === 'blink' ? 'bg-iris-500 text-white shadow-md' : 'text-ink-300 hover:text-white hover:bg-white/[0.07]',
-              )}
-            >
-              <Zap size={13} />
-              <span>Blink</span>
-            </button>
-
-            <button
-              type="button"
               id="live-mode-side"
               onClick={() => setMode('side')}
               title="Lado a Lado: Ambas as páginas em paralelo"
               className={cn(
-                'flex h-7.5 items-center gap-1.5 rounded-lg px-2.5 text-[11.5px] font-medium transition-all',
-                mode === 'side' ? 'bg-iris-500 text-white shadow-md' : 'text-ink-300 hover:text-white hover:bg-white/[0.07]',
+                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium transition-all duration-150',
+                mode === 'side' ? 'bg-iris-500 text-white shadow-sm font-semibold' : 'text-ink-300 hover:text-white hover:bg-white/[0.06]',
               )}
             >
               <Columns2 size={13} />
@@ -491,139 +399,90 @@ export function LiveBrowserView({
 
             <button
               type="button"
-              id="live-mode-focus-a"
-              onClick={() => setMode('focus-a')}
-              title="Foco 100% na Página A"
+              id="live-mode-onion"
+              onClick={() => setMode('onion')}
+              title="Onion Skin: Páginas sobrepostas com transparência"
               className={cn(
-                'flex size-7.5 items-center justify-center rounded-lg text-[11px] font-bold transition-all',
-                mode === 'focus-a' ? 'bg-iris-500 text-white' : 'text-ink-400 hover:text-white',
+                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium transition-all duration-150',
+                mode === 'onion' ? 'bg-iris-500 text-white shadow-sm font-semibold' : 'text-ink-300 hover:text-white hover:bg-white/[0.06]',
               )}
             >
-              A
+              <Layers size={13} />
+              <span>Onion</span>
             </button>
 
             <button
               type="button"
-              id="live-mode-focus-b"
-              onClick={() => setMode('focus-b')}
-              title="Foco 100% na Página B"
+              id="live-mode-blink"
+              onClick={() => setMode('blink')}
+              title="Blink: Segure espaço para alternar entre as duas páginas"
               className={cn(
-                'flex size-7.5 items-center justify-center rounded-lg text-[11px] font-bold transition-all',
-                mode === 'focus-b' ? 'bg-neon-500 text-black' : 'text-ink-400 hover:text-white',
+                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium transition-all duration-150',
+                mode === 'blink' ? 'bg-iris-500 text-white shadow-sm font-semibold' : 'text-ink-300 hover:text-white hover:bg-white/[0.06]',
               )}
             >
-              B
+              <Zap size={13} />
+              <span>Blink</span>
+            </button>
+          </div>
+
+          <span className="h-4 w-px bg-white/10" />
+
+          {/* Interactive Target: Ambas | A | B */}
+          <div className="flex items-center rounded-lg bg-black/50 p-0.5 ring-1 ring-white/10" role="group" aria-label="Página para interagir">
+            <span className="px-1.5 text-[10.5px] font-medium text-ink-400">Interagir:</span>
+            <button
+              type="button"
+              id="control-target-both"
+              onClick={() => setActiveTarget('both')}
+              title="Interagir com ambas as páginas simultaneamente"
+              className={cn(
+                'flex h-6.5 items-center rounded px-2 text-[11px] font-medium transition-all duration-150',
+                activeTarget === 'both'
+                  ? 'bg-gradient-to-r from-iris-500 to-neon-500 text-white font-semibold shadow-xs'
+                  : 'text-ink-300 hover:bg-white/[0.06] hover:text-white',
+              )}
+            >
+              Ambas
+            </button>
+            <button
+              type="button"
+              id="control-target-a"
+              onClick={() => setActiveTarget('a')}
+              title="Interagir na Página A (Referência)"
+              className={cn(
+                'flex h-6.5 items-center gap-1 rounded px-2 text-[11px] font-medium transition-all duration-150',
+                activeTarget === 'a'
+                  ? 'bg-iris-500 text-white font-semibold shadow-xs'
+                  : 'text-ink-300 hover:bg-white/[0.06] hover:text-white',
+              )}
+            >
+              <span className="size-1.5 rounded-full bg-iris-300" />
+              <span>A</span>
+            </button>
+            <button
+              type="button"
+              id="control-target-b"
+              onClick={() => setActiveTarget('b')}
+              title="Interagir na Página B (Localhost)"
+              className={cn(
+                'flex h-6.5 items-center gap-1 rounded px-2 text-[11px] font-medium transition-all duration-150',
+                activeTarget === 'b'
+                  ? 'bg-neon-500 text-black font-semibold shadow-xs'
+                  : 'text-ink-300 hover:bg-white/[0.06] hover:text-white',
+              )}
+            >
+              <span className="size-1.5 rounded-full bg-black" />
+              <span>B</span>
             </button>
           </div>
         </div>
 
-        {/* Center-Right: Synchronized Scroll Controller ("os dois lados tem que acompanhar") */}
+        {/* Center: Synchronized Route Navigator */}
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            id="toggle-sync-scroll-btn"
-            onClick={() => setSyncScroll((s) => !s)}
-            title={syncScroll ? 'Rolagem sincronizada ativa: ambos os lados rolam juntos' : 'Rolagem desincronizada'}
-            className={cn(
-              'flex h-7.5 items-center gap-1.5 rounded-xl px-2.5 text-[11px] font-bold transition-all',
-              syncScroll
-                ? 'bg-neon-500/20 text-neon-300 ring-1 ring-neon-500/50 shadow-[0_0_12px_rgba(20,241,149,0.3)]'
-                : 'bg-white/5 text-ink-400 hover:text-white',
-            )}
-          >
-            {syncScroll ? <Lock size={12} className="text-neon-400" /> : <Unlock size={12} />}
-            <span>Rolagem Sincronizada</span>
-          </button>
-
-          {/* Quick Scroll Steppers */}
-          {syncScroll && (
-            <div className="flex items-center gap-0.5 rounded-lg bg-black/40 p-0.5 ring-1 ring-white/10">
-              <button
-                type="button"
-                onClick={() => setScrollY(0)}
-                title="Rolar ambas as páginas para o topo"
-                className="rounded px-1.5 py-0.5 text-[10px] text-ink-300 hover:bg-white/10 hover:text-white"
-              >
-                Topo
-              </button>
-              <button
-                type="button"
-                onClick={() => changeScroll(-300)}
-                title="Subir 300px em ambas as páginas"
-                className="rounded p-1 text-ink-300 hover:bg-white/10 hover:text-white"
-              >
-                <ChevronUp size={13} />
-              </button>
-              <span className="font-mono text-[10.5px] px-1 text-neon-300">
-                {Math.round(scrollY)}px
-              </span>
-              <button
-                type="button"
-                onClick={() => changeScroll(300)}
-                title="Descer 300px em ambas as páginas"
-                className="rounded p-1 text-ink-300 hover:bg-white/10 hover:text-white"
-              >
-                <ChevronDown size={13} />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Location Sync & Snapshot */}
-        <div className="flex items-center gap-2">
-          <Button
-            id="sync-location-btn"
-            variant="neon"
-            size="sm"
-            onClick={() => handleSyncLocation()}
-            icon={<RefreshCw size={12} className="text-black" />}
-            title="Sincronizar rota entre a página ativa e a outra [Alt+S]"
-            className="font-bold shadow-md hover:scale-[1.02]"
-          >
-            Sincronizar Rota
-          </Button>
-
-          <button
-            type="button"
-            id="quick-login-option-a"
-            onClick={handleAutoLoginOptionA}
-            title="Injeta token de autenticação diretamente na Opção A para acessar o protótipo imediatamente"
-            className="flex h-7.5 items-center gap-1.5 rounded-xl border border-iris-500/40 bg-iris-500/15 px-2 text-[11px] font-medium text-iris-200 hover:bg-iris-500/25 hover:text-white transition-all shadow-sm"
-          >
-            <KeyRound size={12} className="text-iris-400" />
-            <span className="hidden xl:inline">Auto-Login A</span>
-          </button>
-
-          <Button
-            id="capture-live-both-btn"
-            variant="neon"
-            size="sm"
-            onClick={onCaptureBoth}
-            loading={capturingBoth}
-            icon={<Camera size={12} className="text-black" />}
-            title="Capturar o estado atual de ambas as páginas para comparar no Pixel Diff e AI"
-            className="font-bold shadow-[0_0_20px_rgba(20,241,149,0.35)]"
-          >
-            {capturingBoth ? 'Capturando…' : '📸 Capturar para Diff'}
-          </Button>
-        </div>
-      </div>
-
-      {/* ==================================================================== */}
-      {/*  Shared Navigation & Viewport Bar ("Os dois lados tem que acompanhar")*/}
-      {/* ==================================================================== */}
-      <div
-        onWheel={handleWheel}
-        className="z-25 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] bg-ink-900/90 px-4 py-1.5 text-[11px] backdrop-blur-md"
-      >
-        {/* Left: Synchronized Route Navigator */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-neon-300 flex items-center gap-1">
-            <Compass size={12} />
-            <span>Navegar em Ambas:</span>
-          </span>
-          <div className="flex items-center rounded-lg bg-black/60 px-2 py-0.5 ring-1 ring-white/10 max-w-xs">
-            <span className="font-mono text-ink-500 mr-1">/</span>
+          <div className="flex items-center rounded-lg bg-black/60 px-2 py-0.5 ring-1 ring-white/10">
+            <Compass size={12} className="text-neon-400 mr-1.5 shrink-0" />
+            <span className="font-mono text-ink-500 mr-0.5 text-[11px]">/</span>
             <input
               type="text"
               value={sharedRouteInput.startsWith('/') ? sharedRouteInput.slice(1) : sharedRouteInput}
@@ -633,8 +492,8 @@ export function LiveBrowserView({
                   handleNavigateBoth(sharedRouteInput)
                 }
               }}
-              placeholder="ex: login, produtos..."
-              className="w-36 bg-transparent font-mono text-[11px] text-white placeholder-ink-500 outline-none"
+              placeholder="rota (ex: produtos)..."
+              className="w-28 md:w-40 bg-transparent font-mono text-[11px] text-white placeholder-ink-500 outline-none"
             />
             <button
               type="button"
@@ -646,14 +505,14 @@ export function LiveBrowserView({
           </div>
 
           {/* Quick Route Chips */}
-          <div className="flex items-center gap-1">
-            {COMMON_ROUTES.map((route) => (
+          <div className="hidden sm:flex items-center gap-1">
+            {COMMON_ROUTES.slice(0, 4).map((route) => (
               <button
                 key={route.path}
                 type="button"
                 onClick={() => handleNavigateBoth(route.path)}
                 className={cn(
-                  'rounded-lg px-2 py-0.5 text-[10.5px] transition-all',
+                  'rounded-md px-2 py-0.5 text-[10.5px] transition-all',
                   pathA === route.path && pathB === route.path
                     ? 'bg-neon-500/20 text-neon-300 ring-1 ring-neon-500/40 font-semibold'
                     : 'bg-white/[0.04] text-ink-300 hover:bg-white/[0.08] hover:text-white',
@@ -663,186 +522,176 @@ export function LiveBrowserView({
               </button>
             ))}
           </div>
+
+          <button
+            type="button"
+            id="quick-login-option-a"
+            onClick={handleAutoLoginOptionA}
+            title="Injeta token de autenticação na Opção A para acessar o protótipo"
+            className="flex h-6.5 items-center gap-1 rounded-md border border-iris-500/30 bg-iris-500/10 px-2 text-[10.5px] font-medium text-iris-200 hover:bg-iris-500/20 hover:text-white transition-all"
+          >
+            <KeyRound size={11} className="text-iris-400" />
+            <span className="hidden xl:inline">Login A</span>
+          </button>
         </div>
 
-        {/* Right: Device Preset & Virtual Height Selectors */}
-        <div className="flex items-center gap-3">
-          {/* Device Width */}
-          <div className="flex items-center gap-1">
-            <span className="text-ink-400">Largura:</span>
-            <div className="flex items-center rounded-lg bg-black/40 p-0.5 ring-1 ring-white/10">
-              {(
-                [
-                  { id: 'fluid', label: 'Fluido' },
-                  { id: '1440', label: '1440' },
-                  { id: '1280', label: '1280' },
-                  { id: '768', label: '768' },
-                  { id: '390', label: '390' },
-                ] as const
-              ).map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => setDevicePreset(preset.id)}
-                  className={cn(
-                    'rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors',
-                    devicePreset === preset.id
-                      ? 'bg-iris-500 text-white font-bold'
-                      : 'text-ink-400 hover:text-white hover:bg-white/5',
-                  )}
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Content Height Controller */}
-          <div className="flex items-center gap-1">
-            <span className="text-ink-400">Altura:</span>
-            <select
-              value={virtualHeight}
-              onChange={(e) => setVirtualHeight(Number(e.target.value))}
-              className="rounded bg-black/50 px-1.5 py-0.5 font-mono text-[10px] text-ink-200 ring-1 ring-white/10 outline-none"
-            >
-              <option value={3000}>3000px</option>
-              <option value={5000}>5000px (Padrão)</option>
-              <option value={8000}>8000px</option>
-              <option value={12000}>12000px</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* ==================================================================== */}
-      {/*  Contextual Controls Bar (Onion, Blink, Curtain)                     */}
-      {/* ==================================================================== */}
-      {isStackedMode && (
-        <div
-          onWheel={handleWheel}
-          className="z-20 flex flex-wrap items-center justify-between border-b border-white/[0.06] bg-ink-900/80 px-4 py-1 text-[11.5px] backdrop-blur-sm"
-        >
-          {/* Mode-specific tools */}
-          <div className="flex items-center gap-4">
-            {mode === 'onion' && (
-              <>
-                <span className="font-semibold text-iris-300">Onion Skin ao Vivo:</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-ink-300">Opacidade:</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={onionOpacity}
-                    onChange={(e) => setOnionOpacity(Number(e.target.value))}
-                    className="h-1.5 w-24 accent-iris-500 cursor-pointer"
-                  />
-                  <span className="font-mono text-white text-[11px]">{Math.round(onionOpacity * 100)}%</span>
-                </div>
-                <Toggle
-                  id="live-blend-diff"
-                  checked={blendDifference}
-                  onChange={setBlendDifference}
-                  label="Modo Diferença"
-                />
-              </>
-            )}
-
-            {mode === 'blink' && (
-              <div className="flex items-center gap-3">
-                <span className="font-semibold text-iris-300">Blink ao Vivo:</span>
-                <span className="text-ink-300">
-                  Segure <Kbd>Espaço</Kbd> para ver a <strong>Página A</strong> (solte para ver a <strong>Página B</strong>)
-                </span>
-                <span
-                  className={cn(
-                    'rounded-full px-2 py-0.5 text-[10px] font-bold uppercase transition-colors',
-                    blinkShowsDesign
-                      ? 'bg-iris-500 text-white shadow-md'
-                      : 'bg-neon-500 text-black shadow-md',
-                  )}
-                >
-                  Exibindo: {blinkShowsDesign ? 'A: Referência' : 'B: Localhost'}
-                </span>
-              </div>
-            )}
-
-            {mode === 'split' && (
-              <div className="flex items-center gap-3">
-                <span className="font-semibold text-iris-300">Cortina Dividida ao Vivo:</span>
-                <span className="text-ink-300">
-                  <strong className="text-iris-300">Esquerda = Página A</strong> |{' '}
-                  <strong className="text-neon-300">Direita = Página B</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSplitPos(50)}
-                  className="rounded bg-white/10 px-2 py-0.5 text-[10px] text-ink-200 hover:bg-white/20 hover:text-white"
-                >
-                  Centralizar (50%)
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Sub-pixel Calibration Offset Y (Fine alignment between Page A and B) */}
-          <div className="flex items-center gap-2">
-            <span className="text-ink-400 text-[10.5px]">Ajustar Offset Vertical B:</span>
-            <div className="flex items-center gap-1 rounded bg-black/40 px-1 py-0.5 ring-1 ring-white/10">
-              <button
-                type="button"
-                onClick={() => setOffsetY((y) => y - 5)}
-                title="Subir Página B em 5px"
-                className="rounded px-1 text-ink-300 hover:bg-white/10 hover:text-white text-[10px]"
-              >
-                -5px
-              </button>
-              <span className="font-mono text-[10.5px] text-iris-300 px-1">
-                {offsetY > 0 ? `+${offsetY}` : offsetY}px
-              </span>
-              <button
-                type="button"
-                onClick={() => setOffsetY((y) => y + 5)}
-                title="Descer Página B em 5px"
-                className="rounded px-1 text-ink-300 hover:bg-white/10 hover:text-white text-[10px]"
-              >
-                +5px
-              </button>
-              {offsetY !== 0 && (
-                <button
-                  type="button"
-                  onClick={() => setOffsetY(0)}
-                  title="Zerar calibração"
-                  className="text-ink-400 hover:text-white text-[9px] px-1"
-                >
-                  0
-                </button>
-              )}
-            </div>
-
-            {/* Wheel mode catcher toggle */}
+        {/* Right: Contextual Controls & Device Preset & Capture CTA */}
+        <div className="flex items-center gap-2">
+          {/* Mode Contextual Controls */}
+          {mode === 'split' && (
             <button
               type="button"
-              onClick={() => setWheelCaptureMode((w) => !w)}
-              title={
-                wheelCaptureMode
-                  ? 'Modo Rolar: o mouse rola as duas telas juntas em qualquer ponto'
-                  : 'Modo Clicar: o mouse clica e digita nas páginas'
-              }
-              className={cn(
-                'flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10.5px] font-medium transition-all ml-2',
-                wheelCaptureMode
-                  ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/50'
-                  : 'bg-white/5 text-ink-300 hover:text-white',
-              )}
+              onClick={() => setSplitPos(50)}
+              title="Centralizar divisor em 50%"
+              className="hidden md:inline-flex rounded bg-white/10 px-2 py-0.5 text-[10px] text-ink-200 hover:bg-white/20 hover:text-white"
             >
-              {wheelCaptureMode ? <MoveVertical size={11} /> : <MousePointer size={11} />}
-              <span>{wheelCaptureMode ? 'Modo Rolar (Wheel)' : 'Modo Clicar'}</span>
+              Centralizar 50%
             </button>
+          )}
+
+          {mode === 'onion' && (
+            <div className="hidden md:flex items-center gap-2 text-[10.5px]">
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={onionOpacity}
+                onChange={(e) => setOnionOpacity(Number(e.target.value))}
+                className="h-1.5 w-16 accent-iris-500 cursor-pointer"
+              />
+              <span className="font-mono text-white text-[10px]">{Math.round(onionOpacity * 100)}%</span>
+              <Toggle id="live-blend-diff" checked={blendDifference} onChange={setBlendDifference} label="Diferença" />
+            </div>
+          )}
+
+          {mode === 'blink' && (
+            <div className="hidden md:flex items-center gap-1.5 text-[10.5px]">
+              <span className="text-ink-400">Segure <Kbd>Espaço</Kbd></span>
+              <span
+                className={cn(
+                  'rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase transition-colors',
+                  blinkShowsDesign ? 'bg-iris-500 text-white' : 'bg-neon-500 text-black',
+                )}
+              >
+                {blinkShowsDesign ? 'A: Referência' : 'B: Localhost'}
+              </span>
+            </div>
+          )}
+
+          {/* Sub-pixel Calibration Offset Y */}
+          <div className="hidden xl:flex items-center gap-1 rounded bg-black/40 px-1 py-0.5 ring-1 ring-white/10">
+            <span className="text-[10px] text-ink-400 px-0.5">Offset B:</span>
+            <button
+              type="button"
+              onClick={() => setOffsetY((y) => y - 5)}
+              title="Subir Página B em 5px"
+              className="rounded px-1 text-ink-300 hover:bg-white/10 hover:text-white text-[10px]"
+            >
+              -5
+            </button>
+            <span className="font-mono text-[10px] text-iris-300 px-0.5">
+              {offsetY > 0 ? `+${offsetY}` : offsetY}px
+            </span>
+            <button
+              type="button"
+              onClick={() => setOffsetY((y) => y + 5)}
+              title="Descer Página B em 5px"
+              className="rounded px-1 text-ink-300 hover:bg-white/10 hover:text-white text-[10px]"
+            >
+              +5
+            </button>
+            {offsetY !== 0 && (
+              <button
+                type="button"
+                onClick={() => setOffsetY(0)}
+                title="Zerar calibração"
+                className="text-ink-400 hover:text-white text-[9px] px-0.5"
+              >
+                0
+              </button>
+            )}
           </div>
+
+          {/* Sync Scroll Toggle */}
+          <button
+            type="button"
+            id="toggle-sync-scroll-btn"
+            onClick={() => setSyncScroll((s) => !s)}
+            title={syncScroll ? 'Rolagem sincronizada ativa (ambos acompanham juntos)' : 'Rolagem desincronizada'}
+            className={cn(
+              'flex h-7 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium transition-all',
+              syncScroll
+                ? 'bg-neon-500/15 text-neon-300 ring-1 ring-neon-500/40'
+                : 'bg-white/5 text-ink-400 hover:text-white',
+            )}
+          >
+            {syncScroll ? <Lock size={11} className="text-neon-400" /> : <Unlock size={11} />}
+            <span className="hidden xl:inline">{syncScroll ? 'Sincronizado' : 'Livre'}</span>
+          </button>
+
+          {/* Wheel Mode Toggle */}
+          <button
+            type="button"
+            onClick={() => setWheelCaptureMode((w) => !w)}
+            title={
+              wheelCaptureMode
+                ? 'Modo Rolar Ativo: a roda do mouse rola ambas as telas em qualquer posição'
+                : 'Modo Clicar: o mouse clica e navega na página'
+            }
+            className={cn(
+              'flex h-7 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium transition-all',
+              wheelCaptureMode
+                ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/50'
+                : 'bg-white/5 text-ink-400 hover:text-white',
+            )}
+          >
+            {wheelCaptureMode ? <MoveVertical size={11} /> : <MousePointer size={11} />}
+            <span className="hidden xl:inline">{wheelCaptureMode ? 'Rolar' : 'Clicar'}</span>
+          </button>
+
+          {/* Device Width Presets */}
+          <div className="hidden lg:flex items-center rounded-lg bg-black/40 p-0.5 ring-1 ring-white/10">
+            {(
+              [
+                { id: 'fluid', label: 'Fluido' },
+                { id: '1440', label: '1440' },
+                { id: '1280', label: '1280' },
+                { id: '768', label: '768' },
+                { id: '390', label: '390' },
+              ] as const
+            ).map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => setDevicePreset(preset.id)}
+                className={cn(
+                  'rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors',
+                  devicePreset === preset.id
+                    ? 'bg-iris-500 text-white font-bold'
+                    : 'text-ink-400 hover:text-white hover:bg-white/5',
+                )}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Snapshot Capture Button */}
+          <Button
+            id="capture-live-both-btn"
+            variant="neon"
+            size="sm"
+            onClick={onCaptureBoth}
+            loading={capturingBoth}
+            icon={<Camera size={12} className="text-black" />}
+            title="Capturar telas e analisar no Pixel Diff e Gemini IA"
+            className="font-bold shadow-[0_0_16px_rgba(20,241,149,0.3)] h-7 text-[11px]"
+          >
+            {capturingBoth ? 'Capturando…' : '📸 Capturar para Diff'}
+          </Button>
         </div>
-      )}
+      </div>
 
       {/* ==================================================================== */}
       {/*  Live Viewport (Stacked or Side-by-Side)                             */}
@@ -948,13 +797,11 @@ export function LiveBrowserView({
                     mixBlendMode: mode === 'onion' && blendDifference ? 'difference' : 'normal',
                     clipPath: mode === 'split' ? `inset(0 ${100 - splitPos}% 0 0)` : undefined,
                     pointerEvents:
-                      wheelCaptureMode
-                        ? 'none'
-                        : mode === 'split'
+                      mode === 'split'
+                        ? 'auto'
+                        : activeTarget === 'a' || activeTarget === 'both'
                           ? 'auto'
-                          : activeTarget === 'a' || activeTarget === 'both'
-                            ? 'auto'
-                            : 'none',
+                          : 'none',
                   }}
                   className="transition-[opacity] duration-75"
                 >
@@ -992,13 +839,11 @@ export function LiveBrowserView({
                     opacity: mode === 'blink' ? (blinkShowsDesign ? 0 : 1) : 1,
                     clipPath: mode === 'split' ? `inset(0 0 0 ${splitPos}%)` : undefined,
                     pointerEvents:
-                      wheelCaptureMode
-                        ? 'none'
-                        : mode === 'split'
+                      mode === 'split'
+                        ? 'auto'
+                        : activeTarget === 'b' || activeTarget === 'both'
                           ? 'auto'
-                          : activeTarget === 'b' || activeTarget === 'both'
-                            ? 'auto'
-                            : 'none',
+                          : 'none',
                   }}
                   className="transition-[opacity] duration-75"
                 >
@@ -1268,44 +1113,19 @@ export function LiveBrowserView({
               <ArrowDown size={12} />
             </button>
 
-            {/* Vertical Scroll Percentage Label */}
-            <span className="mt-1 font-mono text-[9px] text-ink-400 -rotate-90 select-none">
+            {/* Vertical Scroll Percentage Button */}
+            <button
+              type="button"
+              onClick={() => scrollToPercent(scrollPct >= 95 ? 0 : (scrollPct + 25) / 100)}
+              title="Clique para rolar 25%"
+              className="mt-1 font-mono text-[9px] text-ink-400 hover:text-white -rotate-90 select-none"
+            >
               {Math.round(scrollPct)}%
-            </span>
+            </button>
           </div>
         )}
       </div>
 
-      {/* Floating Helper Banner at Bottom */}
-      <div
-        onWheel={handleWheel}
-        className="z-10 flex items-center justify-between border-t border-white/[0.06] bg-ink-950/90 px-4 py-1.5 text-[11px] text-ink-400"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-neon-400 font-bold">🔒 Rolagem 100% Sincronizada:</span>
-          <span>
-            Ambos os lados acompanham juntos em tempo real! Use a <strong className="text-white">barra mestra à direita</strong>, as setas{' '}
-            <Kbd>↑</Kbd> / <Kbd>↓</Kbd>, <Kbd>PageUp</Kbd> / <Kbd>PageDown</Kbd>, ou a roda do mouse sobre as barras.
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            {SCROLL_PRESETS.map((p) => (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => scrollToPercent(p.pct)}
-                className="rounded px-1.5 py-0.5 text-[10px] bg-white/[0.06] hover:bg-white/15 text-ink-300 hover:text-white"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-          <span>
-            Atalhos: <Kbd>Espaço</Kbd> Blink · <Kbd>Alt+S</Kbd> Sincronizar Rota
-          </span>
-        </div>
-      </div>
     </div>
   )
 }

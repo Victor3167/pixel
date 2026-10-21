@@ -1,22 +1,20 @@
-import { Blend, Columns2, Globe, Hand, Layers, Ruler, ScanSearch, SquareDashed, SquareSplitHorizontal, Zap } from 'lucide-react'
+import { Blend, Columns2, Hand, Layers, Ruler, ScanSearch, SquareDashed, SquareSplitHorizontal, Zap } from 'lucide-react'
 import type { DiffBase, DiffResult, InspectionMode, ToolMode } from '../types/audit'
 import { cn } from '../utils/cn'
-import { formatMatchScore } from '../utils/pixelDiff'
 import { Button, Kbd, Segmented, Slider, Toggle } from './ui'
 
-const MODES: { value: InspectionMode; label: string; key: string; icon: typeof Layers; hint: string }[] = [
-  { value: 'live', label: 'Navegação ao Vivo', key: '0', icon: Globe, hint: 'Navegue nas páginas ao vivo, faça login e sincronize localizações' },
-  { value: 'diff', label: 'Pixel Diff', key: '1', icon: ScanSearch, hint: 'Auto pixelmatch diff with neon-magenta overlay' },
-  { value: 'onion', label: 'Onion Skin', key: '2', icon: Layers, hint: 'Opacity overlay + mix-blend-mode: difference' },
-  { value: 'blink', label: 'Blink', key: '3', icon: Zap, hint: 'Hold Space to flip Design ↔ Implementation' },
-  { value: 'split', label: 'Curtain', key: '4', icon: SquareSplitHorizontal, hint: 'Draggable split reveal' },
-  { value: 'side', label: 'Side by Side', key: '5', icon: Columns2, hint: 'Synced pan / zoom with mirrored crosshair' },
+const CANVAS_MODES: { value: InspectionMode; label: string; key: string; icon: typeof Layers; hint: string }[] = [
+  { value: 'diff', label: 'Pixel Diff', key: '1', icon: ScanSearch, hint: 'Diferença pixel-a-pixel com realce magenta' },
+  { value: 'split', label: 'Cortina', key: '2', icon: SquareSplitHorizontal, hint: 'Divisor deslizante interativo' },
+  { value: 'side', label: 'Lado a Lado', key: '3', icon: Columns2, hint: 'Visualização paralela sincronizada' },
+  { value: 'onion', label: 'Onion Skin', key: '4', icon: Layers, hint: 'Sobreposição com opacidade e mesclagem' },
+  { value: 'blink', label: 'Blink', key: '5', icon: Zap, hint: 'Alterne instantaneamente segurando Espaço' },
 ]
 
 const TOOLS: { value: ToolMode; label: string; key: string; icon: typeof Hand }[] = [
-  { value: 'inspect', label: 'Inspect / Pan', key: 'V', icon: Hand },
-  { value: 'measure', label: 'Ruler', key: 'M', icon: Ruler },
-  { value: 'annotate', label: 'Annotate', key: 'A', icon: SquareDashed },
+  { value: 'inspect', label: 'Inspecionar / Pan', key: 'V', icon: Hand },
+  { value: 'measure', label: 'Régua', key: 'M', icon: Ruler },
+  { value: 'annotate', label: 'Anotar', key: 'A', icon: SquareDashed },
 ]
 
 interface ToolbarProps {
@@ -43,88 +41,76 @@ interface ToolbarProps {
 }
 
 export function Toolbar(props: ToolbarProps) {
-  const { mode, tool, hasBoth, diff, diffBusy } = props
-  const score = diff?.matchScore ?? null
+  const { mode, tool, hasBoth } = props
+
+  // When in Live Browser mode, Toolbar is replaced by LiveBrowserView's consolidated toolbar
+  if (mode === 'live') return null
 
   return (
-    <div className="pointer-events-none absolute top-3 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2">
-      <div className="glass pointer-events-auto flex items-center gap-1 rounded-2xl p-1" role="toolbar" aria-label="Inspection modes">
-        {MODES.map(({ value, label, key, icon: Icon, hint }) => (
-          <button
-            key={value}
-            id={`mode-${value}`}
-            type="button"
-            title={`${hint} (${key})`}
-            onClick={() => props.onModeChange(value)}
-            className={cn(
-              'group flex h-8 items-center gap-1.5 rounded-xl px-2.5 text-[12px] font-medium transition-all duration-150',
-              mode === value
-                ? 'bg-iris-500 text-white shadow-[0_4px_16px_-4px_rgb(99_84_240/0.9)]'
-                : 'text-ink-200 hover:bg-white/[0.07] hover:text-white',
-            )}
-          >
-            <Icon size={14} />
-            <span className="hidden xl:inline">{label}</span>
-            <Kbd className={cn(mode === value && 'border-white/25 bg-black/25 text-white/90')}>{key}</Kbd>
-          </button>
-        ))}
-
-        <span className="mx-1 h-5 w-px bg-white/10" />
-
-        {TOOLS.map(({ value, label, key, icon: Icon }) => (
-          <button
-            key={value}
-            id={`tool-${value}`}
-            type="button"
-            title={`${label} (${key})`}
-            onClick={() => props.onToolChange(value)}
-            className={cn(
-              'flex h-8 items-center gap-1.5 rounded-xl px-2 text-[12px] transition-all duration-150',
-              tool === value
-                ? 'bg-neon-500/20 text-neon-300 ring-1 ring-neon-500/40'
-                : 'text-ink-300 hover:bg-white/[0.07] hover:text-white',
-            )}
-          >
-            <Icon size={14} />
-            <Kbd>{key}</Kbd>
-          </button>
-        ))}
-      </div>
-
-      <div className="glass pointer-events-auto flex min-h-10 items-center gap-4 rounded-2xl px-4 py-1.5 animate-pop" key={mode}>
-        {mode === 'live' && (
-          <div className="flex items-center gap-2 text-[12px] text-ink-200">
-            <span className="flex items-center gap-1.5 font-medium text-neon-300">
-              <span className="size-2 rounded-full bg-neon-400 animate-pulse" /> Navegação ao Vivo
-            </span>
-            <span className="text-white/20">·</span>
-            <span>Escolha a página para mexer e use o botão <strong>Sincronizar Localização</strong> para alinhar as rotas</span>
-          </div>
-        )}
-
-        {!hasBoth && mode !== 'live' && <span className="text-[11.5px] text-ink-300">Load a Design and an Implementation to compare.</span>}
-
-        {hasBoth && mode === 'diff' && (
-          <>
-            <div
-              id="match-score"
+    <div
+      className="flex h-10 shrink-0 items-center justify-between border-b border-white/[0.08] bg-ink-950/90 px-3 backdrop-blur-md z-20 select-none overflow-x-auto scroll-thin gap-3"
+      role="toolbar"
+      aria-label="Controles de inspeção e diff"
+    >
+      {/* Left: Inspection Mode Segmented + Tools */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center rounded-lg bg-black/50 p-0.5 ring-1 ring-white/10">
+          {CANVAS_MODES.map(({ value, label, key, icon: Icon, hint }) => (
+            <button
+              key={value}
+              id={`mode-${value}`}
+              type="button"
+              title={`${hint} (${key})`}
+              onClick={() => props.onModeChange(value)}
               className={cn(
-                'flex items-center gap-2 rounded-lg px-2.5 py-1 font-mono text-[12px] font-semibold ring-1',
-                score === null
-                  ? 'bg-white/5 text-ink-300 ring-white/10'
-                  : score >= 99
-                    ? 'bg-mint-400/10 text-mint-400 ring-mint-400/30'
-                    : score >= 95
-                      ? 'bg-amber-400/10 text-amber-400 ring-amber-400/30'
-                      : 'bg-neon-500/10 text-neon-300 ring-neon-500/30',
+                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11.5px] font-medium transition-all duration-150',
+                mode === value
+                  ? 'bg-iris-500 text-white shadow-sm font-semibold'
+                  : 'text-ink-300 hover:bg-white/[0.06] hover:text-white',
               )}
             >
-              <span className={cn('size-1.5 rounded-full bg-current', diffBusy && 'animate-pulse')} />
-              Match Score: {diffBusy && !diff ? '…' : `${formatMatchScore(diff)}%`}
-            </div>
+              <Icon size={12.5} />
+              <span>{label}</span>
+              <Kbd className={cn(mode === value && 'border-white/25 bg-black/25 text-white/90')}>{key}</Kbd>
+            </button>
+          ))}
+        </div>
+
+        <span className="h-4 w-px bg-white/10" />
+
+        <div className="flex items-center rounded-lg bg-black/50 p-0.5 ring-1 ring-white/10">
+          {TOOLS.map(({ value, label, key, icon: Icon }) => (
+            <button
+              key={value}
+              id={`tool-${value}`}
+              type="button"
+              title={`${label} (${key})`}
+              onClick={() => props.onToolChange(value)}
+              className={cn(
+                'flex h-7 items-center gap-1.5 rounded-md px-2 text-[11.5px] transition-all duration-150',
+                tool === value
+                  ? 'bg-neon-500/20 text-neon-300 ring-1 ring-neon-500/40 font-semibold'
+                  : 'text-ink-400 hover:bg-white/[0.06] hover:text-white',
+              )}
+            >
+              <Icon size={13} />
+              <Kbd>{key}</Kbd>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Right: Contextual Controls for active inspection mode */}
+      <div className="flex items-center gap-3">
+        {!hasBoth && (
+          <span className="text-[11px] text-ink-400">Carregue um Design e uma Implementação para comparar</span>
+        )}
+
+        {hasBoth && mode === 'diff' && (
+          <div className="flex items-center gap-3 text-[11px]">
             <Slider
               id="threshold-slider"
-              label="Threshold"
+              label="Tolerância"
               value={props.threshold}
               min={0}
               max={1}
@@ -132,24 +118,24 @@ export function Toolbar(props: ToolbarProps) {
               onChange={props.onThreshold}
               format={(v) => v.toFixed(2)}
             />
-            <Toggle id="aa-toggle" checked={props.includeAA} onChange={props.onIncludeAA} label="Count anti-aliasing" />
+            <Toggle id="aa-toggle" checked={props.includeAA} onChange={props.onIncludeAA} label="Anti-aliasing" />
             <Segmented
               value={props.diffBase}
               onChange={props.onDiffBase}
               options={[
                 { value: 'design', label: 'Design' },
                 { value: 'impl', label: 'Impl' },
-                { value: 'none', label: 'None' },
+                { value: 'none', label: 'Diff Puro' },
               ]}
             />
-          </>
+          </div>
         )}
 
         {hasBoth && mode === 'onion' && (
-          <>
+          <div className="flex items-center gap-3 text-[11px]">
             <Slider
               id="onion-opacity"
-              label="Design opacity"
+              label="Opacidade"
               value={props.onionOpacity}
               min={0}
               max={1}
@@ -163,17 +149,17 @@ export function Toolbar(props: ToolbarProps) {
               onChange={props.onBlendDifference}
               label={
                 <span className="inline-flex items-center gap-1">
-                  <Blend size={12} /> mix-blend-mode: difference
+                  <Blend size={12} /> Diferença
                 </span>
               }
             />
-          </>
+          </div>
         )}
 
         {hasBoth && mode === 'blink' && (
-          <>
-            <span className="text-[11.5px] text-ink-300">
-              Hold <Kbd>Space</Kbd> to flip instantly
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="text-ink-400">
+              Segure <Kbd>Espaço</Kbd>
             </span>
             <Button
               id="blink-hold"
@@ -182,24 +168,28 @@ export function Toolbar(props: ToolbarProps) {
               onPointerDown={() => props.onBlinkHold(true)}
               onPointerUp={() => props.onBlinkHold(false)}
               onPointerLeave={() => props.onBlinkHold(false)}
-              className="w-40 touch-none"
+              className="h-6.5 text-[11px] touch-none"
             >
-              {props.blinkShowsDesign ? 'SHOWING DESIGN' : 'SHOWING IMPLEMENTATION'}
+              {props.blinkShowsDesign ? 'EXIBINDO DESIGN' : 'EXIBINDO IMPLEMENTAÇÃO'}
             </Button>
-          </>
+          </div>
         )}
 
         {hasBoth && mode === 'split' && (
-          <>
-            <span className="text-[11.5px] text-ink-300">Drag the divider · left = Design, right = Implementation</span>
-            <Button size="sm" onClick={props.onSplitReset}>
-              Center
-            </Button>
-          </>
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="text-ink-400">Arraste o divisor</span>
+            <button
+              type="button"
+              onClick={props.onSplitReset}
+              className="rounded bg-white/10 px-2 py-0.5 text-[10.5px] text-ink-200 hover:bg-white/20 hover:text-white transition-colors"
+            >
+              Centralizar (50%)
+            </button>
+          </div>
         )}
 
         {hasBoth && mode === 'side' && (
-          <span className="text-[11.5px] text-ink-300">Synced pan / zoom with a mirrored laser crosshair</span>
+          <span className="text-[11px] text-ink-400">Navegação e zoom sincronizados lado a lado</span>
         )}
       </div>
     </div>

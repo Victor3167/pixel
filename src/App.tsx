@@ -133,7 +133,9 @@ export default function App() {
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null)
   const [ruler, setRuler] = useState<RulerMeasurement | null>(null)
 
-  /* ------------------------------ Right Sidebar ----------------------------- */
+  /* ------------------------------ Panels & Sidebar -------------------------- */
+  const [showLeftPanel, setShowLeftPanel] = useState<boolean>(false)
+  const [showRightPanel, setShowRightPanel] = useState<boolean>(false)
   const [rightTab, setRightTab] = useState<RightTab>('issues')
   const [projectName, setProjectName] = useState<string>('')
   const [extraContext, setExtraContext] = useState<string>('')
@@ -493,6 +495,7 @@ export default function App() {
       })
 
       setIssues(newIssues)
+      setShowRightPanel(true)
       setRightTab('issues')
       setInspectionMode('diff')
       if (newIssues.length > 0) {
@@ -535,6 +538,7 @@ export default function App() {
     } else {
       addToast('success', 'Prompt de correção atualizado!')
     }
+    setShowRightPanel(true)
     setRightTab('prompt')
   }, [issues.length, runAiAudit, addToast])
 
@@ -572,6 +576,7 @@ export default function App() {
       }
       setIssues((prev) => [...prev, newIssue])
       setSelectedIssueId(newIssue.id)
+      setShowRightPanel(true)
       setRightTab('issues')
       addToast('info', `Annotation #${issues.length + 1} added`)
     },
@@ -598,6 +603,7 @@ export default function App() {
   const handleSelectIssue = useCallback(
     (id: string) => {
       setSelectedIssueId(id)
+      setShowRightPanel(true)
       setRightTab('issues')
       const target = issues.find((i) => i.id === id)
       if (target) {
@@ -712,54 +718,72 @@ export default function App() {
       setSelectedIssueId(null)
       setToolMode('inspect')
     },
+    onToggleLeftPanel: () => setShowLeftPanel((s) => !s),
+    onToggleRightPanel: () => setShowRightPanel((s) => !s),
   })
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-ink-950 text-ink-100 select-none">
-      <Header onLoadDemo={handleLoadDemo} />
+      <Header
+        onLoadDemo={handleLoadDemo}
+        mode={inspectionMode}
+        onModeChange={setInspectionMode}
+        showLeftPanel={showLeftPanel}
+        onToggleLeftPanel={() => setShowLeftPanel((v) => !v)}
+        showRightPanel={showRightPanel}
+        onToggleRightPanel={() => setShowRightPanel((v) => !v)}
+        issueCount={resolvedIssues.length}
+        onRunAi={runAiAudit}
+        aiRunning={aiRunning}
+        canRunAi={canRunAi}
+        matchScore={diffResult?.matchScore ?? null}
+      />
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* Left Drawer: Source, Calibration & Localhost Capture */}
-        <SourcePanel
-          design={design}
-          impl={impl}
-          pasteTarget={pasteTarget}
-          onPasteTarget={setPasteTarget}
-          onDesignFile={handleDesignFile}
-          onImplFile={handleImplFile}
-          onClearDesign={handleClearDesign}
-          onClearImpl={handleClearImpl}
-          designScale={designScale}
-          onDesignScale={setDesignScale}
-          offset={offset}
-          onOffset={setOffset}
-          designCaptureSettings={designCaptureSettings}
-          onDesignCaptureSettings={(patch) =>
-            setDesignCaptureSettings((s) => ({ ...s, ...patch }))
-          }
-          capturingDesign={capturingDesign}
-          onCaptureDesign={runCaptureDesign}
-          designMeta={designMeta}
-          designCaptureError={designCaptureError}
-          designCaptureWarnings={designCaptureWarnings}
-          implCaptureSettings={implCaptureSettings}
-          onImplCaptureSettings={(patch) =>
-            setImplCaptureSettings((s) => ({ ...s, ...patch }))
-          }
-          resolvedViewport={resolvedViewport}
-          capturingImpl={capturingImpl}
-          onCaptureImpl={runCaptureImpl}
-          implMeta={implMeta}
-          implCaptureError={implCaptureError}
-          implCaptureWarnings={implCaptureWarnings}
-          onCaptureBoth={runCaptureBoth}
-          capturingBoth={capturingBoth}
-          onOpenLiveMode={() => setInspectionMode(inspectionMode === 'live' ? 'diff' : 'live')}
-          isLiveMode={inspectionMode === 'live'}
-        />
+        {showLeftPanel && (
+          <SourcePanel
+            design={design}
+            impl={impl}
+            pasteTarget={pasteTarget}
+            onPasteTarget={setPasteTarget}
+            onDesignFile={handleDesignFile}
+            onImplFile={handleImplFile}
+            onClearDesign={handleClearDesign}
+            onClearImpl={handleClearImpl}
+            designScale={designScale}
+            onDesignScale={setDesignScale}
+            offset={offset}
+            onOffset={setOffset}
+            designCaptureSettings={designCaptureSettings}
+            onDesignCaptureSettings={(patch) =>
+              setDesignCaptureSettings((s) => ({ ...s, ...patch }))
+            }
+            capturingDesign={capturingDesign}
+            onCaptureDesign={runCaptureDesign}
+            designMeta={designMeta}
+            designCaptureError={designCaptureError}
+            designCaptureWarnings={designCaptureWarnings}
+            implCaptureSettings={implCaptureSettings}
+            onImplCaptureSettings={(patch) =>
+              setImplCaptureSettings((s) => ({ ...s, ...patch }))
+            }
+            resolvedViewport={resolvedViewport}
+            capturingImpl={capturingImpl}
+            onCaptureImpl={runCaptureImpl}
+            implMeta={implMeta}
+            implCaptureError={implCaptureError}
+            implCaptureWarnings={implCaptureWarnings}
+            onCaptureBoth={runCaptureBoth}
+            capturingBoth={capturingBoth}
+            onOpenLiveMode={() => setInspectionMode(inspectionMode === 'live' ? 'diff' : 'live')}
+            isLiveMode={inspectionMode === 'live'}
+            onClose={() => setShowLeftPanel(false)}
+          />
+        )}
 
-        {/* Center: Toolbar + Infinite Pan/Zoom Stage Viewport + Loupe + HUD */}
-        <div className="relative flex min-w-0 flex-1 flex-col">
+        {/* Center: Docked Sub-Toolbar + Infinite Pan/Zoom Stage Viewport + Loupe + HUD */}
+        <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
           <Toolbar
             mode={inspectionMode}
             onModeChange={setInspectionMode}
@@ -822,71 +846,74 @@ export default function App() {
         </div>
 
         {/* Right Drawer: AI Vision Audit + Issues List + Structured Prompt Compiler */}
-        <RightPanel
-          tab={rightTab}
-          onTab={setRightTab}
-          issueCount={resolvedIssues.length}
-          aiControls={
-            <AiControls
-              apiKey={storedApiKey}
-              onApiKey={(k) => {
-                setStoredApiKey(k)
-                writeStoredApiKey(k)
-              }}
-              envKeyAvailable={hasEnvApiKey()}
-              model={geminiModel}
-              onModel={(m) => {
-                setGeminiModel(m)
-                try {
-                  localStorage.setItem(MODEL_STORAGE, m)
-                } catch {
-                  /* ignore */
-                }
-              }}
-              running={aiRunning}
-              canRun={canRunAi}
-              onRun={runAiAudit}
-              error={aiError}
-            />
-          }
-          issues={
-            <IssuesPanel
-              issues={resolvedIssues}
-              selectedId={selectedIssueId}
-              designScale={designScale}
-              design={design}
-              impl={impl}
-              diff={diffResult}
-              layout={layout}
-              onSelect={handleSelectIssue}
-              onChange={handleUpdateIssue}
-              onDelete={handleDeleteIssue}
-              onClear={handleClearIssues}
-              onRunAi={runAiAudit}
-              aiRunning={aiRunning}
-              onFocusOnCanvas={(rect) => {
-                if (inspectionMode === 'live') setInspectionMode('diff')
-                setFocusRequest({ rect, nonce: Date.now() })
-              }}
-            />
-          }
-          prompt={
-            <PromptPanel
-              projectName={projectName}
-              onProjectName={setProjectName}
-              extraContext={extraContext}
-              onExtraContext={setExtraContext}
-              prompt={compiledPrompt}
-              issueCount={resolvedIssues.length}
-              canExportImage={design !== null || impl !== null}
-              aiRunning={aiRunning}
-              onGeneratePrompt={handleGeneratePrompt}
-              onCopy={handleCopyPrompt}
-              onDownloadPng={handleDownloadPng}
-              onDownloadMarkdown={handleDownloadMarkdown}
-            />
-          }
-        />
+        {showRightPanel && (
+          <RightPanel
+            tab={rightTab}
+            onTab={setRightTab}
+            issueCount={resolvedIssues.length}
+            onClose={() => setShowRightPanel(false)}
+            aiControls={
+              <AiControls
+                apiKey={storedApiKey}
+                onApiKey={(k) => {
+                  setStoredApiKey(k)
+                  writeStoredApiKey(k)
+                }}
+                envKeyAvailable={hasEnvApiKey()}
+                model={geminiModel}
+                onModel={(m) => {
+                  setGeminiModel(m)
+                  try {
+                    localStorage.setItem(MODEL_STORAGE, m)
+                  } catch {
+                    /* ignore */
+                  }
+                }}
+                running={aiRunning}
+                canRun={canRunAi}
+                onRun={runAiAudit}
+                error={aiError}
+              />
+            }
+            issues={
+              <IssuesPanel
+                issues={resolvedIssues}
+                selectedId={selectedIssueId}
+                designScale={designScale}
+                design={design}
+                impl={impl}
+                diff={diffResult}
+                layout={layout}
+                onSelect={handleSelectIssue}
+                onChange={handleUpdateIssue}
+                onDelete={handleDeleteIssue}
+                onClear={handleClearIssues}
+                onRunAi={runAiAudit}
+                aiRunning={aiRunning}
+                onFocusOnCanvas={(rect) => {
+                  if (inspectionMode === 'live') setInspectionMode('diff')
+                  setFocusRequest({ rect, nonce: Date.now() })
+                }}
+              />
+            }
+            prompt={
+              <PromptPanel
+                projectName={projectName}
+                onProjectName={setProjectName}
+                extraContext={extraContext}
+                onExtraContext={setExtraContext}
+                prompt={compiledPrompt}
+                issueCount={resolvedIssues.length}
+                canExportImage={design !== null || impl !== null}
+                aiRunning={aiRunning}
+                onGeneratePrompt={handleGeneratePrompt}
+                onCopy={handleCopyPrompt}
+                onDownloadPng={handleDownloadPng}
+                onDownloadMarkdown={handleDownloadMarkdown}
+              />
+            }
+          />
+        )}
       </div>
 
       <Toasts toasts={toasts} />
