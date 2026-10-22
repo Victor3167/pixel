@@ -1,4 +1,11 @@
-import { CATEGORY_LABELS_PT, SEVERITY_LABELS_PT, type AuditIssue, type DesignScale, type Rect } from '../types/audit'
+import {
+  CATEGORY_LABELS_PT,
+  SEVERITY_LABELS_PT,
+  type AnythingLlmEnrichment,
+  type AuditIssue,
+  type DesignScale,
+  type Rect,
+} from '../types/audit'
 import { describeDomNode, selectorHint } from './domMatch'
 import { formatNumber } from './geometry'
 
@@ -9,6 +16,7 @@ export interface PromptContext {
     title: string
     content: string
   } | null
+  anythingLlmEnrichment?: AnythingLlmEnrichment | null
   designName: string | null
   designSize: { width: number; height: number } | null
   implName: string | null
@@ -136,6 +144,19 @@ export function compilePrompt(context: PromptContext, issues: AuditIssue[]): str
     })
   }
 
+  if (context.anythingLlmEnrichment?.guidelines.trim()) {
+    const ws = context.anythingLlmEnrichment.workspace || 'obsidian-infra'
+    lines.push(`## Diretrizes Oficiais do Obsidian (Recuperadas via AnythingLLM RAG)`)
+    lines.push(`> **Base de Conhecimento:** Workspace \`${ws}\` (AnythingLLM)`)
+    if (context.anythingLlmEnrichment.sources.length > 0) {
+      const uniqueTitles = Array.from(new Set(context.anythingLlmEnrichment.sources.map((s) => s.title))).slice(0, 5)
+      lines.push(`> **Notas consultadas:** ${uniqueTitles.join(', ')}`)
+    }
+    lines.push('')
+    lines.push(context.anythingLlmEnrichment.guidelines.trim())
+    lines.push('')
+  }
+
   if (context.obsidianDoc?.content.trim()) {
     const docTitle = context.obsidianDoc.title.trim() || 'Documentação do Projeto'
     lines.push(`## Especificação & Regras do Projeto (Obsidian: ${docTitle})`)
@@ -150,8 +171,11 @@ export function compilePrompt(context: PromptContext, issues: AuditIssue[]): str
   lines.push('3. Mantenha as alterações mínimas e com escopo preciso: não altere comportamentos ou refatore código não relacionado.')
   lines.push('4. Alinhe com precisão milimétrica: espaçamentos, tipografia (font-size, font-weight, line-height), cores e border-radius exatos.')
   lines.push('5. Ao concluir, confirme os arquivos alterados por número de issue (#1, #2, …) para validação.')
+  if (context.anythingLlmEnrichment?.guidelines.trim()) {
+    lines.push('6. Respeite com prioridade absoluta as diretrizes, tokens e padrões do Obsidian recuperados pelo AnythingLLM na seção "Diretrizes Oficiais do Obsidian".')
+  }
   if (context.obsidianDoc?.content.trim()) {
-    lines.push('6. Respeite com prioridade absoluta todas as convenções, regras de negócio e tokens descritos na seção "Especificação & Regras do Projeto (Obsidian)".')
+    lines.push('7. Respeite com prioridade absoluta todas as convenções, regras de negócio e tokens descritos na seção "Especificação & Regras do Projeto (Obsidian)".')
   }
 
   return lines.join('\n')

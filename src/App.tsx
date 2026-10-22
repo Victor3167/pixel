@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AiControls } from './components/AiControls'
 import { Header } from './components/Header'
 import { IssuesPanel } from './components/IssuesPanel'
@@ -11,6 +11,7 @@ import { Toolbar } from './components/Toolbar'
 import { Viewport, type FocusRequest } from './components/viewport/Viewport'
 import { useImageIntake, useShortcuts } from './hooks/useGlobalInput'
 import type {
+  AnythingLlmEnrichment,
   AuditIssue,
   CaptureMeta,
   CaptureSettings,
@@ -28,6 +29,14 @@ import type {
   ToolMode,
   ViewState,
 } from './types/audit'
+import {
+  checkAnythingLlmHealth,
+  enrichPromptWithAnythingLlm,
+  readStoredAnythingApiKey,
+  readStoredAnythingWorkspace,
+  readStoredAutoEnrich,
+  writeStoredAutoEnrich,
+} from './utils/anythingLlmClient'
 import { downloadBlob, downloadText, renderAnnotatedComparison } from './utils/annotatedExport'
 import { captureLocalhost } from './utils/captureClient'
 import {
@@ -187,6 +196,24 @@ export default function App() {
     },
     [addToast],
   )
+
+  /* -------------------------- AnythingLLM RAG Engine ------------------------ */
+  const [anythingLlmKey] = useState<string>(() => readStoredAnythingApiKey())
+  const [anythingLlmWorkspace] = useState<string>(() => readStoredAnythingWorkspace())
+  const [autoEnrichAnythingLlm, setAutoEnrichAnythingLlm] = useState<boolean>(() => readStoredAutoEnrich())
+  const [anythingLlmEnrichment, setAnythingLlmEnrichment] = useState<AnythingLlmEnrichment | null>(null)
+  const [anythingLlmEnriching, setAnythingLlmEnriching] = useState<boolean>(false)
+  const [anythingLlmConnected, setAnythingLlmConnected] = useState<boolean>(true)
+
+  useEffect(() => {
+    let active = true
+    checkAnythingLlmHealth(anythingLlmKey).then((res) => {
+      if (active) setAnythingLlmConnected(res.online)
+    })
+    return () => {
+      active = false
+    }
+  }, [anythingLlmKey])
 
   /* -------------------------- Pixel Samplers & Layout ----------------------- */
   const designSampler = useMemo(() => (design ? new PixelSampler(design.element) : null), [design])
@@ -544,6 +571,23 @@ export default function App() {
         setSelectedIssueId(newIssues[0].id)
         setFocusRequest({ rect: newIssues[0].rect, nonce: Date.now() })
         addToast('success', `${newIssues.length} divergências visuais detectadas pela IA!`)
+        if (autoEnrichAnythingLlm) {
+          void enrichPromptWithAnythingLlm({
+            apiKey: anythingLlmKey,
+            workspaceSlug: anythingLlmWorkspace,
+            issues: newIssues,
+            projectName,
+            extraContext,
+          })
+            .then((res) => {
+              setAnythingLlmEnrichment(res)
+              setAnythingLlmConnected(true)
+              addToast('success', '✨ Prompt auto-enriquecido pelo AnythingLLM com base no Obsidian!')
+            })
+            .catch((err) => {
+              console.warn('Auto-enrich error:', err)
+            })
+        }
       } else {
         addToast('info', 'Auditoria concluída! Nenhuma divergência visual detectada pelo Gemini.')
       }
@@ -574,19 +618,61 @@ export default function App() {
     activeObsidianMarkdown,
     activeObsidianTitle,
     implMeta,
+    autoEnrichAnythingLlm,
+    anythingLlmKey,
+    anythingLlmWorkspace,
+    projectName,
+    extraContext,
     addToast,
   ])
+
+  const handleEnrichPromptWithAnything = useCallback(async () => {
+    const activeIssues = issues.length > 0 ? issues : resolvedIssues
+    if (activeIssues.length === 0) {
+      addToast('info', 'Detecte ou adicione divergências antes de consultar o AnythingLLM.')
+      return
+    }
+    setAnythingLlmEnriching(true)
+    try {
+      const enrichment = await enrichPromptWithAnythingLlm({
+        apiKey: anythingLlmKey,
+        workspaceSlug: anythingLlmWorkspace,
+        issues: activeIssues,
+        projectName,
+        extraContext,
+      })
+      setAnythingLlmEnrichment(enrichment)
+      setAnythingLlmConnected(true)
+      const count = Array.from(new Set(enrichment.sources.map((s) => s.title))).length
+      addToast('success', `Prompt enriquecido com o AnythingLLM! (${count} notas consultadas)`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      addToast('error', `Falha ao consultar AnythingLLM: ${msg}`)
+    } finally {
+      setAnythingLlmEnriching(false)
+    }
+  }, [issues, resolvedIssues, anythingLlmKey, anythingLlmWorkspace, projectName, extraContext, addToast])
 
   const handleGeneratePrompt = useCallback(async () => {
     if (issues.length === 0) {
       addToast('info', 'Iniciando auditoria para compilar o prompt de correção...')
       await runAiAudit()
     } else {
+      if (autoEnrichAnythingLlm && !anythingLlmEnrichment) {
+        void handleEnrichPromptWithAnything()
+      }
       addToast('success', 'Prompt de correção atualizado!')
     }
     setShowRightPanel(true)
     setRightTab('prompt')
-  }, [issues.length, runAiAudit, addToast])
+  }, [
+    issues.length,
+    runAiAudit,
+    autoEnrichAnythingLlm,
+    anythingLlmEnrichment,
+    handleEnrichPromptWithAnything,
+    addToast,
+  ])
 
   /* ---------------------------- Demo Scenario ------------------------------- */
   const handleLoadDemo = useCallback(async () => {
@@ -667,6 +753,7 @@ export default function App() {
         {
           projectName,
           extraContext,
+          anythingLlmEnrichment,
           obsidianDoc:
             obsidianVault.useInPrompt && activeObsidianMarkdown.trim()
               ? { title: activeObsidianTitle, content: activeObsidianMarkdown }
@@ -696,6 +783,7 @@ export default function App() {
     [
       projectName,
       extraContext,
+      anythingLlmEnrichment,
       obsidianVault.useInPrompt,
       activeObsidianMarkdown,
       activeObsidianTitle,
@@ -974,6 +1062,17 @@ export default function App() {
                 hasObsidianDoc={hasObsidianVault}
                 obsidianDocTitle={activeObsidianTitle}
                 obsidianDocInPrompt={obsidianVault.useInPrompt}
+                anythingLlmConnected={anythingLlmConnected}
+                anythingLlmEnriching={anythingLlmEnriching}
+                anythingLlmEnrichment={anythingLlmEnrichment}
+                onEnrichWithAnythingLlm={handleEnrichPromptWithAnything}
+                autoEnrichWithAnythingLlm={autoEnrichAnythingLlm}
+                onToggleAutoEnrich={(val) => {
+                  setAutoEnrichAnythingLlm(val)
+                  writeStoredAutoEnrich(val)
+                }}
+                anythingLlmWorkspace={anythingLlmWorkspace}
+                onClearEnrichment={() => setAnythingLlmEnrichment(null)}
               />
             }
           />

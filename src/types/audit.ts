@@ -293,4 +293,20 @@ export interface ObsidianDoc {
   useInPrompt: boolean
 }
 
+/* -------------------------------------------------------------------------- */
+/*  AnythingLLM RAG Enrichment                                                 */
+/* -------------------------------------------------------------------------- */
+
+export interface AnythingLlmSource {
+  title: string
+  text?: string
+}
+
+export interface AnythingLlmEnrichment {
+  guidelines: string
+  sources: AnythingLlmSource[]
+  workspace: string
+  timestamp: number
+}
+
 

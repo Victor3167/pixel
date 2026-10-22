@@ -1,5 +1,15 @@
-import { BookOpen, Check, Copy, Download, FileText, Image as ImageIcon, Sparkles } from 'lucide-react'
+import {
+  BookOpen,
+  Check,
+  CheckCircle2,
+  Copy,
+  Download,
+  FileText,
+  Image as ImageIcon,
+  Sparkles,
+} from 'lucide-react'
 import { useState } from 'react'
+import type { AnythingLlmEnrichment } from '../types/audit'
 import { Button, FieldLabel, TextInput } from './ui'
 
 interface PromptPanelProps {
@@ -19,6 +29,14 @@ interface PromptPanelProps {
   hasObsidianDoc?: boolean
   obsidianDocTitle?: string
   obsidianDocInPrompt?: boolean
+  anythingLlmConnected?: boolean
+  anythingLlmEnriching?: boolean
+  anythingLlmEnrichment?: AnythingLlmEnrichment | null
+  onEnrichWithAnythingLlm?: () => void
+  autoEnrichWithAnythingLlm?: boolean
+  onToggleAutoEnrich?: (val: boolean) => void
+  anythingLlmWorkspace?: string
+  onClearEnrichment?: () => void
 }
 
 export function PromptPanel({
@@ -38,6 +56,14 @@ export function PromptPanel({
   hasObsidianDoc,
   obsidianDocTitle,
   obsidianDocInPrompt,
+  anythingLlmConnected = true,
+  anythingLlmEnriching = false,
+  anythingLlmEnrichment = null,
+  onEnrichWithAnythingLlm,
+  autoEnrichWithAnythingLlm = true,
+  onToggleAutoEnrich,
+  anythingLlmWorkspace = 'obsidian-infra',
+  onClearEnrichment,
 }: PromptPanelProps) {
   const [copied, setCopied] = useState(false)
 
@@ -91,6 +117,100 @@ export function PromptPanel({
           </button>
         </div>
       )}
+
+      {/* AnythingLLM RAG Enrichment Bar */}
+      <div className="border-b border-white/[0.06] bg-ink-900/50 p-3 space-y-2">
+        <div className="flex items-center justify-between text-[11px]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="relative flex h-2 w-2">
+              {anythingLlmConnected ? (
+                <>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-500" />
+                </>
+              ) : (
+                <span className="inline-flex rounded-full h-2 w-2 bg-rose-500" />
+              )}
+            </span>
+            <span className="font-semibold text-white">AnythingLLM RAG:</span>
+            <span className="font-mono text-[10.5px] text-neon-300 truncate max-w-[120px]">
+              {anythingLlmWorkspace}
+            </span>
+          </div>
+          {onToggleAutoEnrich && (
+            <label className="flex items-center gap-1.5 text-[10.5px] text-ink-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={autoEnrichWithAnythingLlm}
+                onChange={(e) => onToggleAutoEnrich(e.target.checked)}
+                className="rounded border-white/20 bg-black/40 text-neon-500 focus:ring-0 cursor-pointer"
+              />
+              <span>Auto-enriquecer</span>
+            </label>
+          )}
+        </div>
+
+        {anythingLlmEnrichment ? (
+          <div className="rounded-lg border border-neon-500/25 bg-neon-500/10 p-2 text-[11px]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-neon-300 font-medium">
+                <CheckCircle2 size={13} className="text-neon-400 shrink-0" />
+                <span>Prompt enriquecido via AnythingLLM!</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {onEnrichWithAnythingLlm && (
+                  <button
+                    type="button"
+                    onClick={onEnrichWithAnythingLlm}
+                    disabled={anythingLlmEnriching}
+                    className="text-[10px] text-neon-400 hover:text-white underline hover:no-underline shrink-0"
+                    title="Reconsultar AnythingLLM"
+                  >
+                    {anythingLlmEnriching ? 'Consultando…' : 'Reconsultar'}
+                  </button>
+                )}
+                {onClearEnrichment && (
+                  <button
+                    type="button"
+                    onClick={onClearEnrichment}
+                    className="text-[10px] text-ink-400 hover:text-rose-400"
+                    title="Remover enriquecimento"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+            </div>
+            {anythingLlmEnrichment.sources.length > 0 && (
+              <div className="mt-1 text-[10px] text-ink-300 flex items-center gap-1 overflow-x-auto whitespace-nowrap scroll-thin pt-0.5">
+                <span className="text-ink-400 shrink-0">Fontes:</span>
+                {Array.from(new Set(anythingLlmEnrichment.sources.map((s) => s.title))).slice(0, 4).map((title, i) => (
+                  <span key={i} className="rounded bg-black/40 px-1 py-0.5 font-mono text-[9px] text-ink-200 shrink-0">
+                    {title}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          onEnrichWithAnythingLlm && (
+            <Button
+              id="enrich-anything-btn"
+              variant="subtle"
+              size="sm"
+              className="w-full text-[11px] font-semibold border-neon-500/30 text-neon-300 hover:bg-neon-500/10 hover:border-neon-500/50"
+              icon={<Sparkles size={13} className="text-neon-400" />}
+              loading={anythingLlmEnriching}
+              disabled={issueCount === 0 || !anythingLlmConnected}
+              onClick={onEnrichWithAnythingLlm}
+            >
+              {anythingLlmEnriching
+                ? 'Consultando AnythingLLM (Obsidian RAG)…'
+                : '⚡ Enriquecer Prompt com AnythingLLM'}
+            </Button>
+          )
+        )}
+      </div>
 
       {/* Project & Context Inputs */}
       <div className="space-y-2.5 border-b border-white/[0.06] p-4">
