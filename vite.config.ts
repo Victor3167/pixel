@@ -397,7 +397,7 @@ async function handleCapture(req: IncomingMessage, res: ServerResponse): Promise
     const result = await capture(payload)
     console.log(
       `[pixel-audit] ${payload.url} ${payload.width}x${payload.height}@${payload.deviceScaleFactor}x` +
-        `${payload.selector ? ` ${payload.selector}` : ''} -> ${result.durationMs}ms, ${result.domMap.length} nodes`,
+      `${payload.selector ? ` ${payload.selector}` : ''} -> ${result.durationMs}ms, ${result.domMap.length} nodes`,
     )
     sendJson(res, 200, result)
   } catch (error) {
@@ -447,7 +447,8 @@ export default defineConfig({
     },
   },
   preview: {
-    host: '0.0.0.0',
+    host: true,
     port: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
-  },
+    allowedHosts: true,
+  },,
 })
