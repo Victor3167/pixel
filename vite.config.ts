@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -35,12 +36,40 @@ let browserPromise: Promise<Browser> | null = null
  * Returns one long-lived headless Chromium. Subsequent captures only pay for a
  * fresh BrowserContext (≈ a few ms) instead of a full browser launch.
  */
+function resolveChromiumPath(): string | undefined {
+  if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
+    return process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+  }
+  if (process.env.CHROME_BIN && fs.existsSync(process.env.CHROME_BIN)) {
+    return process.env.CHROME_BIN
+  }
+  const candidatePaths = [
+    '/root/.nix-profile/bin/chromium',
+    '/nix/var/nix/profiles/default/bin/chromium',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome',
+  ]
+  for (const candidate of candidatePaths) {
+    if (fs.existsSync(candidate)) return candidate
+  }
+  return undefined
+}
+
 function getBrowser(): Promise<Browser> {
   if (!browserPromise) {
+    const executablePath = resolveChromiumPath()
     const launching = chromium
       .launch({
         headless: true,
-        args: ['--force-color-profile=srgb', '--hide-scrollbars'],
+        ...(executablePath ? { executablePath } : {}),
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--force-color-profile=srgb',
+          '--hide-scrollbars',
+        ],
       })
       .then((browser) => {
         browser.on('disconnected', () => {
@@ -416,5 +445,9 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/anythingllm/, ''),
       },
     },
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
   },
 })
