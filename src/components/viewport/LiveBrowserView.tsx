@@ -17,7 +17,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CaptureSettings } from '../../types/audit'
+import type { CaptureSettings, LiveCaptureContext } from '../../types/audit'
 import { cn } from '../../utils/cn'
 import { Button, Kbd, Toggle } from '../ui'
 
@@ -43,6 +43,7 @@ interface LiveBrowserViewProps {
   onCaptureBoth: () => void
   capturingBoth: boolean
   onAddToast: (kind: 'info' | 'success' | 'error', message: string) => void
+  onLiveCaptureContextChange?: (context: LiveCaptureContext) => void
 }
 
 /** Parses a base origin and current pathname/search */
@@ -67,6 +68,7 @@ export function LiveBrowserView({
   onCaptureBoth,
   capturingBoth,
   onAddToast,
+  onLiveCaptureContextChange,
 }: LiveBrowserViewProps) {
   /* ------------------------------- State ----------------------------------- */
   // Active page to interact with ("escolher qual página mexer")
@@ -81,20 +83,48 @@ export function LiveBrowserView({
   const [offsetY, setOffsetY] = useState<number>(0) // Sub-pixel / calibration offset for Page B
   const [virtualHeight, setVirtualHeight] = useState<number>(18000) // Default 18,000px to cover long e-commerce pages
   const [containerHeight, setContainerHeight] = useState<number>(850)
+  const [viewportWidth, setViewportWidth] = useState<number>(1280)
   const containerRef = useRef<HTMLDivElement>(null)
+  const livePaneRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!containerRef.current) return
-    const update = () => {
+    const measure = () => {
+      const pane = livePaneRef.current
+      if (pane) {
+        setViewportWidth(Math.max(320, pane.clientWidth || 1280))
+        setContainerHeight(Math.max(320, pane.clientHeight || 850))
+        return
+      }
       if (containerRef.current) {
         setContainerHeight(containerRef.current.clientHeight || 850)
       }
     }
-    update()
-    const ro = new ResizeObserver(update)
-    ro.observe(containerRef.current)
+    measure()
+    const targets = [livePaneRef.current, containerRef.current].filter(Boolean) as Element[]
+    if (targets.length === 0) return
+    const ro = new ResizeObserver(measure)
+    for (const el of targets) ro.observe(el)
     return () => ro.disconnect()
-  }, [])
+  }, [mode])
+
+  useEffect(() => {
+    onLiveCaptureContextChange?.({
+      scrollY,
+      implScrollDeltaY: offsetY,
+      viewportWidth,
+      viewportHeight: containerHeight,
+      syncScroll,
+      devicePreset,
+    })
+  }, [
+    scrollY,
+    offsetY,
+    viewportWidth,
+    containerHeight,
+    syncScroll,
+    devicePreset,
+    onLiveCaptureContextChange,
+  ])
 
   // In side-by-side mode, columns are ~50% narrower so content wraps and can be up to 2x taller
   const effectiveVirtualHeight = mode === 'side' ? Math.max(virtualHeight, 22000) : virtualHeight
@@ -808,7 +838,7 @@ export function LiveBrowserView({
               </div>
 
               {/* Stacked Frames Container with Synchronized Scroll Offset */}
-              <div className="absolute inset-0 top-9 bg-white overflow-hidden">
+              <div ref={livePaneRef} className="absolute inset-0 top-9 bg-white overflow-hidden">
                 {/* ------------------------------------------------------------ */}
                 {/*  FRAME A (Reference - Left side of curtain)                  */}
                 {/* ------------------------------------------------------------ */}
@@ -934,7 +964,7 @@ export function LiveBrowserView({
             /* ================================================================ */
             /*  SIDE-BY-SIDE OR FULL FOCUS MODES                                */
             /* ================================================================ */
-            <div className="relative flex min-h-0 flex-1 gap-2.5 overflow-hidden">
+            <div ref={livePaneRef} className="relative flex min-h-0 flex-1 gap-2.5 overflow-hidden">
               {/* Frame A */}
               {(mode === 'side' || mode === 'focus-a') && (
                 <div

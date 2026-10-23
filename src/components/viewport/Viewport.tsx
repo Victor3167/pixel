@@ -19,7 +19,7 @@ import { centerOnRect, fitView, zoomAround } from '../../utils/geometry'
 import type { PixelSampler } from '../../utils/pixelSampler'
 import { Button, IconButton, Kbd } from '../ui'
 import { LiveBrowserView } from './LiveBrowserView'
-import type { CaptureSettings } from '../../types/audit'
+import type { CaptureSettings, LiveCaptureContext } from '../../types/audit'
 import { HudBar } from './HudBar'
 import { PixelLoupe } from './PixelLoupe'
 import { ViewPane } from './ViewPane'
@@ -65,6 +65,7 @@ interface ViewportProps {
   onCaptureBoth?: () => void
   capturingBoth?: boolean
   onAddToast?: (kind: 'info' | 'success' | 'error', message: string) => void
+  onLiveCaptureContextChange?: (context: LiveCaptureContext) => void
 }
 
 export function Viewport(props: ViewportProps) {
@@ -177,6 +178,7 @@ export function Viewport(props: ViewportProps) {
         onCaptureBoth={props.onCaptureBoth ?? (() => {})}
         capturingBoth={props.capturingBoth ?? false}
         onAddToast={props.onAddToast ?? (() => {})}
+        onLiveCaptureContextChange={props.onLiveCaptureContextChange}
       />
     )
   }

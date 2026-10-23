@@ -163,6 +163,11 @@ function validateRequest(input: unknown): CaptureRequest {
     throw new HttpError(400, '"waitForMs" must be between 0 and 30000')
   }
 
+  const rawScrollY = body.scrollY === undefined ? 0 : Number(body.scrollY)
+  if (!Number.isFinite(rawScrollY) || rawScrollY < 0 || rawScrollY > 500_000) {
+    throw new HttpError(400, '"scrollY" must be between 0 and 500000')
+  }
+
   return {
     url: parsed.toString(),
     width,
@@ -175,6 +180,7 @@ function validateRequest(input: unknown): CaptureRequest {
       typeof body.localStorage === 'object' && body.localStorage !== null
         ? (body.localStorage as Record<string, string>)
         : undefined,
+    scrollY: Math.round(rawScrollY),
   }
 }
 
@@ -340,6 +346,15 @@ async function capture(request: CaptureRequest): Promise<CaptureResponse> {
       await page.waitForTimeout(request.waitForMs)
     }
 
+    const scrollY = request.scrollY ?? 0
+    if (scrollY > 0) {
+      await page.evaluate((y) => {
+        window.scrollTo(0, y)
+      }, scrollY)
+      await page.waitForTimeout(120)
+      await page.evaluate(() => document.fonts.ready.then(() => undefined))
+    }
+
     const selector = request.selector?.trim() ?? ''
     let png: Buffer
     let domMap: DOMElementNode[]
@@ -437,6 +452,7 @@ function pixelAuditCapture(): Plugin {
 const anythingLlmTarget =
   process.env.ANYTHINGLLM_URL ||
   process.env.VITE_ANYTHINGLLM_URL ||
+  process.env.VITE_ANYTHINGLLM_BASE_URL ||
   'http://127.0.0.1:3001/api/v1'
 
 const proxyConfig = {

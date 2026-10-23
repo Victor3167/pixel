@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AiControls } from './components/AiControls'
 import { Header } from './components/Header'
 import { IssuesPanel } from './components/IssuesPanel'
@@ -20,6 +20,7 @@ import type {
   DiffResult,
   GeminiModel,
   InspectionMode,
+  LiveCaptureContext,
   LoadedImage,
   ObsidianDocState,
   PasteTarget,
@@ -45,7 +46,7 @@ import {
   readStoredObsidianVault,
   writeStoredObsidianVault,
 } from './utils/obsidianStorage'
-import { resolveCaptureViewport } from './utils/captureParams'
+import { resolveCaptureViewport, resolveLiveCaptureParams } from './utils/captureParams'
 import { crossReferenceRect, refreshIssueReferences, type CrossReferenceContext } from './utils/crossReference'
 import { createDemoPair } from './utils/demo'
 import { copyText } from './utils/dom'
@@ -98,6 +99,10 @@ export default function App() {
 
   /* ----------------------------- Inspection Modes --------------------------- */
   const [inspectionMode, setInspectionMode] = useState<InspectionMode>('diff')
+  const liveCaptureContextRef = useRef<LiveCaptureContext | null>(null)
+  const handleLiveCaptureContextChange = useCallback((context: LiveCaptureContext) => {
+    liveCaptureContextRef.current = context
+  }, [])
   const [toolMode, setToolMode] = useState<ToolMode>('inspect')
   const [threshold, setThreshold] = useState<number>(0.1)
   const [includeAA, setIncludeAA] = useState<boolean>(false)
@@ -324,8 +329,11 @@ export default function App() {
   }, [])
 
   /* --------------------------- Automated Capture ---------------------------- */
-  const runCaptureDesign = useCallback(async (): Promise<LoadedImage | null> => {
-    if (capturingDesign) return null
+  const runCaptureDesign = useCallback(async (options?: {
+    useLiveViewport?: boolean
+    force?: boolean
+  }): Promise<LoadedImage | null> => {
+    if (capturingDesign && !options?.force) return null
     const url = designCaptureSettings.url.trim()
     if (!url) {
       setDesignCaptureError('Please enter a reference URL')
@@ -340,16 +348,25 @@ export default function App() {
       const manualW = Number(designCaptureSettings.manualWidth)
       const manualH = Number(designCaptureSettings.manualHeight)
       const manualDsf = Number(designCaptureSettings.manualDeviceScaleFactor)
+      const useLive = options?.useLiveViewport ?? inspectionMode === 'live'
+      const liveParams = useLive
+        ? resolveLiveCaptureParams(liveCaptureContextRef.current, 'design')
+        : {}
 
       const response = await captureLocalhost({
         url,
-        width: Number.isInteger(manualW) && manualW >= 1 ? manualW : 1280,
-        height: Number.isInteger(manualH) && manualH >= 1 ? manualH : 800,
+        width:
+          liveParams.width ??
+          (Number.isInteger(manualW) && manualW >= 1 ? manualW : 1280),
+        height:
+          liveParams.height ??
+          (Number.isInteger(manualH) && manualH >= 1 ? manualH : 800),
         deviceScaleFactor: Number.isFinite(manualDsf) && manualDsf >= 0.25 ? manualDsf : 1,
         selector: designCaptureSettings.selector.trim() || undefined,
         waitForMs: designCaptureSettings.waitForMs || 0,
         hideScrollbars: designCaptureSettings.hideScrollbars !== false,
         localStorage: designCaptureSettings.localStorage,
+        scrollY: liveParams.scrollY,
       })
 
       const loaded = await loadImageFromUrl(
@@ -382,11 +399,14 @@ export default function App() {
     } finally {
       setCapturingDesign(false)
     }
-  }, [capturingDesign, designCaptureSettings, loadDesignImage, addToast])
+  }, [capturingDesign, designCaptureSettings, inspectionMode, loadDesignImage, addToast])
 
   const runCaptureImpl = useCallback(
-    async (overrideDesign?: LoadedImage | null): Promise<LoadedImage | null> => {
-      if (capturingImpl) return null
+    async (
+      overrideDesign?: LoadedImage | null,
+      options?: { useLiveViewport?: boolean; force?: boolean },
+    ): Promise<LoadedImage | null> => {
+      if (capturingImpl && !options?.force) return null
       const url = implCaptureSettings.url.trim()
       if (!url) {
         setImplCaptureError('Please enter a target URL')
@@ -405,8 +425,20 @@ export default function App() {
       )
 
       try {
-        const width = Number.isInteger(currentResolved.width) && currentResolved.width >= 1 ? currentResolved.width : 1280
-        const height = Number.isInteger(currentResolved.height) && currentResolved.height >= 1 ? currentResolved.height : 800
+        const useLive = options?.useLiveViewport ?? inspectionMode === 'live'
+        const liveParams = useLive
+          ? resolveLiveCaptureParams(liveCaptureContextRef.current, 'impl')
+          : {}
+        const width =
+          liveParams.width ??
+          (Number.isInteger(currentResolved.width) && currentResolved.width >= 1
+            ? currentResolved.width
+            : 1280)
+        const height =
+          liveParams.height ??
+          (Number.isInteger(currentResolved.height) && currentResolved.height >= 1
+            ? currentResolved.height
+            : 800)
         const dsf = Number.isFinite(currentResolved.deviceScaleFactor) ? currentResolved.deviceScaleFactor : 1
 
         const response = await captureLocalhost({
@@ -418,6 +450,7 @@ export default function App() {
           waitForMs: implCaptureSettings.waitForMs || 0,
           hideScrollbars: implCaptureSettings.hideScrollbars !== false,
           localStorage: implCaptureSettings.localStorage,
+          scrollY: liveParams.scrollY,
         })
 
         const loaded = await loadImageFromUrl(
@@ -436,6 +469,9 @@ export default function App() {
         }
 
         loadImplImage(loaded, meta)
+        if (useLive) {
+          setOffset({ x: 0, y: 0 })
+        }
         if (response.warnings?.length) setImplCaptureWarnings(response.warnings)
         addToast(
           'success',
@@ -451,22 +487,28 @@ export default function App() {
         setCapturingImpl(false)
       }
     },
-    [capturingImpl, implCaptureSettings, design, designScale, loadImplImage, addToast],
+    [capturingImpl, implCaptureSettings, design, designScale, inspectionMode, loadImplImage, addToast],
   )
 
   const runCaptureBoth = useCallback(async () => {
     if (capturingBoth || capturingDesign || capturingImpl) return
     setCapturingBoth(true)
-    addToast('info', 'Capturing Reference URL first…')
+    const live = inspectionMode === 'live' ? liveCaptureContextRef.current : null
+    addToast(
+      'info',
+      live?.syncScroll && (live.scrollY > 0 || live.implScrollDeltaY !== 0)
+        ? `Capturando viewport ao vivo (scroll ≈ ${live.scrollY}px)…`
+        : 'Capturing Reference URL first…',
+    )
     const capturedDesign = await runCaptureDesign()
     if (capturedDesign) {
       addToast('info', 'Reference captured! Now capturing Localhost…')
       await runCaptureImpl(capturedDesign)
       addToast('success', 'Both Reference and Localhost captured and aligned!')
-      setInspectionMode('diff')
+      if (inspectionMode !== 'live') setInspectionMode('diff')
     }
     setCapturingBoth(false)
-  }, [capturingBoth, capturingDesign, capturingImpl, runCaptureDesign, runCaptureImpl, addToast])
+  }, [capturingBoth, capturingDesign, capturingImpl, inspectionMode, runCaptureDesign, runCaptureImpl, addToast])
 
   /* ------------------------------- AI Vision Audit -------------------------- */
   const activeApiKey = resolveApiKey(storedApiKey)
@@ -489,41 +531,42 @@ export default function App() {
     setAiError(null)
 
     try {
-      let activeDesign = design
-      let activeImpl = impl
-
-      // If images haven't been captured yet (e.g. user is in Live Mode), auto-capture both pages!
-      if (!activeDesign || !activeImpl) {
-        if (!designCaptureSettings.url.trim() || !implCaptureSettings.url.trim()) {
-          addToast('info', 'Carregue as imagens ou informe as URLs de referência e da sua loja local.')
-          setAiRunning(false)
-          return
-        }
-        addToast('info', 'Capturando ambas as páginas para auditoria com IA...')
-        setCapturingBoth(true)
-        const capDesign = await runCaptureDesign()
-        if (capDesign) {
-          const capImpl = await runCaptureImpl(capDesign)
-          activeDesign = capDesign
-          activeImpl = capImpl
-        }
-        setCapturingBoth(false)
-        if (!activeDesign || !activeImpl) {
-          addToast('error', 'Falha ao capturar as páginas. Verifique se os sites estão respondendo.')
-          setAiRunning(false)
-          return
-        }
+      if (!designCaptureSettings.url.trim() || !implCaptureSettings.url.trim()) {
+        addToast('info', 'Informe a URL de referência e a URL da implementação para auditar o Ao Vivo.')
+        setAiRunning(false)
+        return
       }
 
-      // Compute comparison layout
-      const currentLayout = computeLayout(activeDesign, activeImpl, offset)
+      const live = liveCaptureContextRef.current
+      addToast(
+        'info',
+        live?.syncScroll
+          ? `Capturando as telas do Ao Vivo (scroll ≈ ${live.scrollY}px) para a auditoria…`
+          : 'Capturando as telas do Ao Vivo para a auditoria…',
+      )
+      setCapturingBoth(true)
+      const captureOptions = { useLiveViewport: true, force: true } as const
+      const activeDesign = await runCaptureDesign(captureOptions)
+      const activeImpl = activeDesign ? await runCaptureImpl(activeDesign, captureOptions) : null
+      setCapturingBoth(false)
+      if (!activeDesign || !activeImpl) {
+        addToast('error', 'Falha ao capturar as telas do Ao Vivo. A auditoria não usou o demo.')
+        setAiRunning(false)
+        return
+      }
+
+      const freshOffset = { x: 0, y: 0 }
+      setOffset(freshOffset)
+
+      // Compute comparison layout from the freshly captured live screens only.
+      const currentLayout = computeLayout(activeDesign, activeImpl, freshOffset)
 
       // 1. Design 1:1 in comparison layout
       const designCanvas = rasterizeLayer(activeDesign.element, currentLayout.width, currentLayout.height, 0, 0)
       // 2. Implementation 1:1 with offset
       const implCanvas = rasterizeLayer(activeImpl.element, currentLayout.width, currentLayout.height, currentLayout.offsetX, currentLayout.offsetY)
-      // 3. Diff composite (dimmed design + neon magenta mask)
-      const currentDiff = diffResult ?? computeDiff({ design: activeDesign, impl: activeImpl, layout: currentLayout, threshold, includeAA })
+      // 3. Diff composite (dimmed design + neon magenta mask) from the live captures, never the demo pair.
+      const currentDiff = computeDiff({ design: activeDesign, impl: activeImpl, layout: currentLayout, threshold, includeAA })
       const diffCanvas = buildDiffComposite(activeDesign, currentDiff, currentLayout)
 
       const designB64 = canvasToBase64Png(designCanvas)
@@ -601,14 +644,10 @@ export default function App() {
   }, [
     activeApiKey,
     aiRunning,
-    design,
-    impl,
     designCaptureSettings.url,
     implCaptureSettings.url,
     runCaptureDesign,
     runCaptureImpl,
-    offset,
-    diffResult,
     threshold,
     includeAA,
     geminiModel,
@@ -986,6 +1025,7 @@ export default function App() {
             onCaptureBoth={runCaptureBoth}
             capturingBoth={capturingBoth}
             onAddToast={addToast}
+            onLiveCaptureContextChange={handleLiveCaptureContextChange}
           />
         </div>
 

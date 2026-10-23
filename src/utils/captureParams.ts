@@ -1,4 +1,32 @@
-import type { CaptureSettings, DesignScale, LoadedImage } from '../types/audit'
+import type { CaptureSettings, DesignScale, LoadedImage, LiveCaptureContext } from '../types/audit'
+
+const DEVICE_PRESET_WIDTH: Record<LiveCaptureContext['devicePreset'], number | null> = {
+  fluid: null,
+  '1440': 1440,
+  '1280': 1280,
+  '768': 768,
+  '390': 390,
+}
+
+/** Maps the live curtain viewport to Playwright capture dimensions + scroll. */
+export function resolveLiveCaptureParams(
+  live: LiveCaptureContext | null | undefined,
+  role: 'design' | 'impl',
+): { width?: number; height?: number; scrollY?: number } {
+  if (!live) return {}
+  const presetW = DEVICE_PRESET_WIDTH[live.devicePreset]
+  const width = Math.max(
+    320,
+    Math.min(8192, Math.round(presetW ?? live.viewportWidth)),
+  )
+  const height = Math.max(320, Math.min(8192, Math.round(live.viewportHeight)))
+  if (!live.syncScroll) {
+    return { width, height, scrollY: 0 }
+  }
+  const rawScroll =
+    role === 'design' ? live.scrollY : live.scrollY + live.implScrollDeltaY
+  return { width, height, scrollY: Math.max(0, Math.round(rawScroll)) }
+}
 
 export interface ResolvedViewport {
   width: number

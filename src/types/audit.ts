@@ -42,6 +42,19 @@ export interface CaptureRequest {
   hideScrollbars?: boolean
   /** Optional key-value localStorage entries injected before capture (e.g. auth tokens). */
   localStorage?: Record<string, string>
+  /** Scroll the page to this Y offset (CSS px) before shooting the viewport. */
+  scrollY?: number
+}
+
+/** Snapshot of the synchronized live browser pane (curtain / onion / blink). */
+export interface LiveCaptureContext {
+  scrollY: number
+  /** Extra vertical offset applied to page B in live mode (calibration). */
+  implScrollDeltaY: number
+  viewportWidth: number
+  viewportHeight: number
+  syncScroll: boolean
+  devicePreset: 'fluid' | '1440' | '1280' | '768' | '390'
 }
 
 export interface DOMComputedStyles {
