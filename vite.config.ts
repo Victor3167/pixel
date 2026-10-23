@@ -434,21 +434,29 @@ function pixelAuditCapture(): Plugin {
   }
 }
 
+const anythingLlmTarget =
+  process.env.ANYTHINGLLM_URL ||
+  process.env.VITE_ANYTHINGLLM_URL ||
+  'http://127.0.0.1:3001/api/v1'
+
+const proxyConfig = {
+  '/api/anythingllm': {
+    target: anythingLlmTarget,
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/api\/anythingllm/, ''),
+  },
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), pixelAuditCapture()],
   server: {
-    proxy: {
-      '/api/anythingllm': {
-        target: 'http://127.0.0.1:3001/api/v1',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/anythingllm/, ''),
-      },
-    },
+    proxy: proxyConfig,
   },
   preview: {
     host: true,
     port: process.env.PORT ? parseInt(process.env.PORT, 10) : 3000,
     allowedHosts: true,
+    proxy: proxyConfig,
   },
 })
