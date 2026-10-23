@@ -332,7 +332,10 @@ async function capture(request: CaptureRequest): Promise<CaptureResponse> {
         warnings.push('Page never reached "networkidle" within 20s; captured the current state.')
       } else {
         const message = error instanceof Error ? error.message.split('\n')[0] : String(error)
-        throw new HttpError(502, `Could not open ${request.url}: ${message}`)
+        const hint = /ERR_CONNECTION_REFUSED|ERR_CONNECTION_TIMED_OUT|ERR_ADDRESS_UNREACHABLE/.test(message)
+          ? ' — o servidor não alcança essa URL. Se a página B roda no seu computador, inicie-a escutando na rede (ex: `--host 0.0.0.0`) e libere a porta no firewall.'
+          : ''
+        throw new HttpError(502, `Could not open ${request.url}: ${message}${hint}`)
       }
     }
 
@@ -401,6 +404,40 @@ async function capture(request: CaptureRequest): Promise<CaptureResponse> {
   }
 }
 
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]', '0.0.0.0'])
+
+function normalizeIp(ip: string | undefined): string {
+  return (ip ?? '').trim().replace(/^::ffff:/, '')
+}
+
+function isLoopbackIp(ip: string): boolean {
+  return ip === '' || ip === '::1' || ip === 'localhost' || ip.startsWith('127.')
+}
+
+/** IP of the browser that is using the app (honours reverse proxies such as Coolify/Traefik). */
+function getClientIp(req: IncomingMessage): string {
+  const forwarded = req.headers['x-forwarded-for']
+  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]
+  return normalizeIp(first) || normalizeIp(req.socket.remoteAddress)
+}
+
+/**
+ * When the app runs on a remote server (Coolify), "localhost" in the capture URL
+ * would point to the server container itself. Map it to the machine of the user
+ * that is operating the app (or to CAPTURE_LOCALHOST_HOST when configured).
+ */
+function resolveCaptureUrl(rawUrl: string, req: IncomingMessage): string {
+  const parsed = new URL(rawUrl)
+  if (!LOOPBACK_HOSTS.has(parsed.hostname)) return rawUrl
+
+  const override = process.env.CAPTURE_LOCALHOST_HOST?.trim()
+  const target = override || getClientIp(req)
+  if (!target || isLoopbackIp(target)) return rawUrl
+
+  parsed.hostname = target
+  return parsed.toString()
+}
+
 async function handleCapture(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
@@ -409,6 +446,11 @@ async function handleCapture(req: IncomingMessage, res: ServerResponse): Promise
   }
   try {
     const payload = validateRequest(await readJsonBody(req))
+    const requestedUrl = payload.url
+    payload.url = resolveCaptureUrl(payload.url, req)
+    if (payload.url !== requestedUrl) {
+      console.log(`[pixel-audit] loopback target remapped: ${requestedUrl} -> ${payload.url}`)
+    }
     const result = await capture(payload)
     console.log(
       `[pixel-audit] ${payload.url} ${payload.width}x${payload.height}@${payload.deviceScaleFactor}x` +
