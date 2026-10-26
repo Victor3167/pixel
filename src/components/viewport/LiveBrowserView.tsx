@@ -19,6 +19,11 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CaptureSettings, LiveCaptureContext } from '../../types/audit'
 import { cn } from '../../utils/cn'
+import {
+  buildLiveProxyFrameUrl,
+  mergeReferenceLocalStorage,
+  shouldUseLiveProxyForReference,
+} from '../../utils/liveProxy'
 import { Button, Kbd, Toggle } from '../ui'
 
 export type ActiveControlTarget = 'a' | 'b' | 'both'
@@ -176,6 +181,11 @@ export function LiveBrowserView({
     () => `${parsedB.origin}${pathB.startsWith('/') ? '' : '/'}${pathB}`,
     [parsedB.origin, pathB],
   )
+  const iframeSrcA = useMemo(() => {
+    if (!shouldUseLiveProxyForReference(fullUrlA)) return fullUrlA
+    const storage = mergeReferenceLocalStorage(fullUrlA, designSettings.localStorage)
+    return buildLiveProxyFrameUrl(fullUrlA, storage)
+  }, [fullUrlA, designSettings.localStorage])
 
   /* -------------------------- Synchronized Scroll -------------------------- */
   const changeScroll = useCallback(
@@ -881,7 +891,7 @@ export function LiveBrowserView({
                   <iframe
                     id="live-frame-a"
                     key={refreshKeyA}
-                    src={fullUrlA}
+                    src={iframeSrcA}
                     title="Página A (Referência)"
                     scrolling={syncScroll ? 'no' : 'auto'}
                     sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
@@ -1041,7 +1051,7 @@ export function LiveBrowserView({
                       <iframe
                         id="live-frame-a"
                         key={refreshKeyA}
-                        src={fullUrlA}
+                        src={iframeSrcA}
                         title="Página A (Referência)"
                         scrolling={syncScroll ? 'no' : 'auto'}
                         sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"

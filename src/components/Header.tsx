@@ -72,6 +72,9 @@ export function Header({
             <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[9.5px] font-medium text-ink-300 tracking-wide">
               PRO
             </span>
+            <span className="border-l border-white/10 pl-2.5 text-[10px] font-medium text-ink-500 whitespace-nowrap">
+              Desenvolvido por Victor Picelli
+            </span>
           </div>
         </div>
       </div>

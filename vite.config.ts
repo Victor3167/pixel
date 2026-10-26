@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { chromium, errors, type Browser } from 'playwright'
 import { defineConfig, type Plugin } from 'vite'
+import { handleLiveProxy } from './server/liveProxy.ts'
 import type {
   CaptureRequest,
   CaptureResponse,
@@ -472,6 +473,9 @@ function pixelAuditCapture(): Plugin {
   return {
     name: 'pixel-audit:capture',
     configureServer(server) {
+      server.middlewares.use('/api/live-proxy', (req, res) => {
+        void handleLiveProxy(req, res)
+      })
       server.middlewares.use('/api/capture', (req, res) => {
         void handleCapture(req, res)
       })
@@ -483,6 +487,9 @@ function pixelAuditCapture(): Plugin {
       server.httpServer?.once('close', () => void closeBrowser())
     },
     configurePreviewServer(server) {
+      server.middlewares.use('/api/live-proxy', (req, res) => {
+        void handleLiveProxy(req, res)
+      })
       server.middlewares.use('/api/capture', (req, res) => {
         void handleCapture(req, res)
       })
