@@ -251,7 +251,15 @@ export function LiveBrowserView({
   /** Navigates both pages to a specific pathname */
   const handleNavigateBoth = useCallback(
     (targetPath: string) => {
-      const cleanPath = targetPath.trim() || '/'
+      let cleanPath = targetPath.trim() || '/'
+      if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+        try {
+          const parsed = new URL(cleanPath)
+          cleanPath = `${parsed.pathname || '/'}${parsed.search || ''}${parsed.hash || ''}`
+        } catch {
+          cleanPath = '/'
+        }
+      }
       const formatted = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`
       setPathA(formatted)
       setPathB(formatted)
@@ -559,7 +567,18 @@ export function LiveBrowserView({
             <input
               type="text"
               value={sharedRouteInput.startsWith('/') ? sharedRouteInput.slice(1) : sharedRouteInput}
-              onChange={(e) => setSharedRouteInput(e.target.value)}
+              onChange={(e) => {
+                let val = e.target.value.trim()
+                if (val.startsWith('http://') || val.startsWith('https://')) {
+                  try {
+                    const parsed = new URL(val)
+                    val = `${parsed.pathname || '/'}${parsed.search || ''}${parsed.hash || ''}`
+                  } catch {
+                    val = '/'
+                  }
+                }
+                setSharedRouteInput(val)
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleNavigateBoth(sharedRouteInput)
