@@ -234,7 +234,9 @@ const extractDomTelemetry = (root: Element, opts: TelemetryOptions): DOMElementN
     for (const child of Array.from(el.childNodes)) {
       if (child.nodeType === Node.TEXT_NODE) ownText += child.textContent ?? ''
     }
-    const textSnippet = ownText.replace(/\s+/g, ' ').trim().slice(0, 40)
+    const cleanOwn = ownText.replace(/\s+/g, ' ').trim()
+    const fallbackText = (el.children.length <= 3 ? el.textContent ?? '' : '').replace(/\s+/g, ' ').trim()
+    const textSnippet = (cleanOwn || fallbackText).slice(0, 100)
 
     const sides = ['Top', 'Right', 'Bottom', 'Left']
     const boxSides = (prefix: 'padding' | 'margin') =>
@@ -273,9 +275,14 @@ const extractDomTelemetry = (root: Element, opts: TelemetryOptions): DOMElementN
         padding: boxSides('padding'),
         margin: boxSides('margin'),
         gap: cs.gap,
+        fontFamily: cs.fontFamily,
         fontSize: cs.fontSize,
         fontWeight: cs.fontWeight,
         lineHeight: cs.lineHeight,
+        letterSpacing: cs.letterSpacing,
+        textTransform: cs.textTransform,
+        textAlign: cs.textAlign,
+        textDecoration: cs.textDecorationLine || cs.textDecoration,
         color: cs.color,
         backgroundColor: cs.backgroundColor,
         borderRadius: radiusValue,

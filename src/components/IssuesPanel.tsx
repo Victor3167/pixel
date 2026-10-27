@@ -133,7 +133,7 @@ function IssueCard({
       {/* Coordinates & Source Badges */}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10.5px] text-ink-300">
         <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[9.5px] font-sans font-semibold uppercase tracking-wider">
-          {issue.source === 'ai' ? '✦ IA' : 'Manual'}
+          {issue.source === 'ai' ? '✦ IA' : issue.source === 'dom-telemetry' ? '⚙ Telemetria DOM' : 'Manual'}
         </span>
         <span className="inline-flex items-center gap-1">
           <Crosshair size={10} />

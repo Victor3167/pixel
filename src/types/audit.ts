@@ -65,9 +65,14 @@ export interface DOMComputedStyles {
   padding: string
   margin: string
   gap: string
+  fontFamily: string
   fontSize: string
   fontWeight: string
   lineHeight: string
+  letterSpacing: string
+  textTransform: string
+  textAlign: string
+  textDecoration: string
   color: string
   backgroundColor: string
   borderRadius: string
@@ -235,7 +240,7 @@ export const SEVERITY_LABELS_PT: Record<IssueSeverity, string> = {
 
 export interface AuditIssue {
   id: string
-  source: 'ai' | 'manual'
+  source: 'ai' | 'manual' | 'dom-telemetry'
   /** Rectangle in comparison-space pixels. */
   rect: Rect
   category: IssueCategory

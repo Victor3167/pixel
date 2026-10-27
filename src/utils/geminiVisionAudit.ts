@@ -3,6 +3,7 @@ import {
   ISSUE_CATEGORIES,
   ISSUE_SEVERITIES,
   type AiRawIssue,
+  type DOMElementNode,
   type GeminiModel,
   type IssueCategory,
   type IssueSeverity,
@@ -90,22 +91,28 @@ IDIOMA OBRIGATÓRIO (MANDATÓRIO):
 - TODOS os textos dos campos "description" e "expectedFix" DEVEM ser redigidos obrigatoriamente em Português do Brasil (pt-BR) fluente, técnico e acionável para desenvolvedores front-end.
 
 DIRETRIZES DE ANÁLISE DE ALTA PRECISÃO:
-1. Estrutura & Layout Vertical:
+1. Tipografia & Textos (MÁXIMA PRIORIDADE - RIGOROSO E CRÍTICO):
+   - Inspecione minuciosamente CADA TEXTO VISÍVEL: títulos principais, botões, preços, badges promocionais, menus, categorias e parágrafos.
+   - Família de Fonte (Font Family): compare o desenho tipográfico (serifada vs sem serifa, fontes arredondadas como Poppins/Nunito vs fontes neutras como Inter/Roboto/Arial). Se a fonte do design não foi carregada ou foi substituída pela padrão, aponte obrigatoriamente como "typography" com severidade ALTA ou CRÍTICA.
+   - Peso da Fonte (Font Weight): verifique se textos no design estão em negrito/bold (600, 700, 800) e na implementação aparecem em peso regular/normal (400), ou vice-versa.
+   - Tamanho da Fonte (Font Size) e Entrelinha (Line Height): verifique proporção, altura em pixels e espaçamento entre linhas.
+   - Conteúdo Textual (Copy & Casing): aponte palavras alteradas, maiúsculas/minúsculas (text-transform: uppercase), pontuação, preços diferentes ou textos ausentes.
+2. Estrutura & Layout Vertical:
    - Inspecione a altura do header e da barra de categorias. Se houver padding vertical excessivo empurrando seções subsequentes (ex.: início do banner em Y=198px em vez de Y=152px), aponte como CRÍTICO de Estrutura / Layout.
    - Compare rigorosamente os links de menu/categorias no desktop: itens presentes no design vs itens trocados ou ausentes na implementação.
-2. Elementos Extras & Modais Invasivos:
+3. Elementos Extras & Modais Invasivos:
    - Detecte modais de consentimento de cookies, popups LGPD ou badges de depuração ("Rendering...", "Dev") cobrindo o conteúdo de base (ex.: cards de benefícios). Aponte como GRAVE de Elemento Extra.
-3. Botões Flutuantes & Componentes Satélite:
+4. Botões Flutuantes & Componentes Satélite:
    - Analise botões flutuantes (ex.: WhatsApp, ajuda): verifique se foi implementado como pílula expandida com texto ("Precisa de ajuda?") ou botões extras adjacentes, quando no design é um botão circular simples (~56x56px, background verde, rounded-full) com ícone SVG.
-4. Elementos Faltando & Badges:
+5. Elementos Faltando & Badges:
    - Verifique badges numéricos sobrepostos a ícones (ex.: badge preto com número "3" e texto branco sobre o ícone de coração de favoritos no header). Aponte como Elemento Faltando.
-5. Sliders, Carrosséis & Paginação:
+6. Sliders, Carrosséis & Paginação:
    - Verifique os indicadores de paginação (dots): a barra ou dot ativo está no primeiro slide (índice 0) ou avançou para outro? O slide ativo corresponde ao da referência?
-6. Tokens e Regras do Obsidian:
+7. Tokens e Regras do Obsidian:
    - Se documentação Obsidian for fornecida, respeite integralmente os tokens, arquitetura (zero forks, Level A composition) e convenções do projeto.
 
 Regras de Saída:
-- Relate discrepâncias visuais reais que um dev precisa corrigir. Ignore anti-aliasing sub-pixel.
+- Relate discrepâncias visuais reais que um dev precisa corrigir. Não ignore diferenças de fonte, peso ou texto.
 - Agrupe diferenças com a mesma causa raiz em UMA ocorrência delimitando o elemento afetado.
 - Bounding boxes ajustadas: [ymin, xmin, ymax, xmax] com inteiros na escala 0-1000 relativa à imagem total.
 - "expectedFix" deve ser uma instrução prática de código (CSS ou marcação JSX/Tailwind).
@@ -129,12 +136,9 @@ export interface VisionAuditInput {
     content: string
   } | null
   /** Optional telemetry of visible DOM nodes in the implementation. */
-  domMap?: Array<{
-    tagName: string
-    className: string
-    textSnippet: string
-    rect: { x: number; y: number; width: number; height: number }
-  }>
+  domMap?: DOMElementNode[]
+  /** Optional telemetry of visible DOM nodes in the design reference. */
+  designDomMap?: DOMElementNode[]
 }
 
 export async function runVisionAudit(input: VisionAuditInput): Promise<AiRawIssue[]> {
@@ -149,6 +153,16 @@ export async function runVisionAudit(input: VisionAuditInput): Promise<AiRawIssu
       'INSTRUÇÃO ESPECIAL DE AUDITORIA: Analise se a implementação respeita estritamente as regras de negócio, tokens de cores/espaçamentos e convenções descritas no documento Obsidian acima. Cite os requisitos correspondentes na descrição da issue quando aplicável.'
     : ''
 
+  const formatTelemetryNode = (n: DOMElementNode) => {
+    const text = n.textSnippet ? ` text="${n.textSnippet}"` : ''
+    const cls = n.className ? ` class="${n.className.slice(0, 50)}"` : ''
+    const cs = n.computedStyles
+    const fontInfo = cs?.fontFamily
+      ? ` font="${cs.fontSize || ''} ${cs.fontFamily.split(',')[0].replace(/['"]/g, '')} weight:${cs.fontWeight || ''} color:${cs.color || ''}"`
+      : ''
+    return `<${n.tagName}${cls}>${text}${fontInfo} rect=[x:${Math.round(n.rect.x)}, y:${Math.round(n.rect.y)}, w:${Math.round(n.rect.width)}, h:${Math.round(n.rect.height)}]`
+  }
+
   let domSection = ''
   if (input.domMap && input.domMap.length > 0) {
     const keyNodes = input.domMap
@@ -160,6 +174,9 @@ export async function runVisionAudit(input: VisionAuditInput): Promise<AiRawIssu
           n.tagName === 'button' ||
           n.tagName === 'a' ||
           n.tagName === 'input' ||
+          n.tagName === 'h1' ||
+          n.tagName === 'h2' ||
+          n.tagName === 'h3' ||
           n.className.includes('fixed') ||
           n.className.includes('nav') ||
           n.className.includes('header') ||
@@ -171,14 +188,19 @@ export async function runVisionAudit(input: VisionAuditInput): Promise<AiRawIssu
 
     if (keyNodes.length > 0) {
       domSection =
-        '\n\n[ELEMENTOS DOM REAIS CAPTURADOS NA IMPLEMENTAÇÃO (Use estes seletores e coordenadas exatas para ancorar as issues)]:\n' +
-        keyNodes
-          .map((n) => {
-            const text = n.textSnippet ? ` text="${n.textSnippet}"` : ''
-            const cls = n.className ? ` class="${n.className.slice(0, 60)}"` : ''
-            return `<${n.tagName}${cls}>${text} rect=[x:${Math.round(n.rect.x)}, y:${Math.round(n.rect.y)}, w:${Math.round(n.rect.width)}, h:${Math.round(n.rect.height)}]`
-          })
-          .join('\n')
+        '\n\n[ELEMENTOS DOM REAIS CAPTURADOS NA IMPLEMENTAÇÃO (Use para ancorar fontes, pesos e tags)]:\n' +
+        keyNodes.map(formatTelemetryNode).join('\n')
+    }
+  }
+
+  if (input.designDomMap && input.designDomMap.length > 0) {
+    const keyDesignNodes = input.designDomMap
+      .filter((n) => Boolean(n.textSnippet) && n.rect.width > 8 && n.rect.height > 8)
+      .slice(0, 40)
+    if (keyDesignNodes.length > 0) {
+      domSection +=
+        '\n\n[ELEMENTOS DOM DO DESIGN DE REFERÊNCIA (Compare os textos e fontes abaixo contra a implementação)]:\n' +
+        keyDesignNodes.map(formatTelemetryNode).join('\n')
     }
   }
 

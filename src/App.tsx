@@ -64,6 +64,7 @@ import {
 } from './utils/geminiVisionAudit'
 import { disposeImage, loadImageFromBlob, loadImageFromUrl } from './utils/imageLoader'
 import { buildDiffComposite, canvasToBase64Png, computeDiff, computeLayout, formatMatchScore, rasterizeLayer } from './utils/pixelDiff'
+import { diffDomTypography } from './utils/domDiff'
 import { PixelSampler } from './utils/pixelSampler'
 import { compilePrompt } from './utils/promptCompiler'
 
@@ -573,6 +574,20 @@ export default function App() {
       const implB64 = canvasToBase64Png(implCanvas)
       const diffB64 = canvasToBase64Png(diffCanvas)
 
+      // 4. Deterministic DOM-to-DOM typography diff if both sides have DOM telemetry
+      const domTypographyIssues = diffDomTypography(designMeta?.domMap, implMeta?.domMap, {
+        width: currentLayout.width,
+        height: currentLayout.height,
+        offsetX: currentLayout.offsetX,
+        offsetY: currentLayout.offsetY,
+      }).map((issue) => {
+        const refData = crossReferenceRect(issue.rect, crossRefContext)
+        return {
+          ...issue,
+          ...refData,
+        }
+      })
+
       const rawIssues = await runVisionAudit({
         apiKey: activeApiKey,
         model: geminiModel,
@@ -588,9 +603,10 @@ export default function App() {
             ? { title: activeObsidianTitle, content: activeObsidianMarkdown }
             : null,
         domMap: implMeta?.domMap,
+        designDomMap: designMeta?.domMap,
       })
 
-      const newIssues: AuditIssue[] = rawIssues.map((raw, idx) => {
+      const aiIssues: AuditIssue[] = rawIssues.map((raw, idx) => {
         const rect = boxToPixels(raw.box_2d, currentLayout.width, currentLayout.height)
         const refData = crossReferenceRect(rect, crossRefContext)
         return {
@@ -605,6 +621,19 @@ export default function App() {
           ...refData,
         }
       })
+
+      // Merge deterministic issues with AI issues, avoiding duplicates on same elements
+      const filteredAiIssues = aiIssues.filter((ai) => {
+        return !domTypographyIssues.some((dom) => {
+          const xOverlap = Math.max(0, Math.min(ai.rect.x + ai.rect.width, dom.rect.x + dom.rect.width) - Math.max(ai.rect.x, dom.rect.x))
+          const yOverlap = Math.max(0, Math.min(ai.rect.y + ai.rect.height, dom.rect.y + dom.rect.height) - Math.max(ai.rect.y, dom.rect.y))
+          const overlapArea = xOverlap * yOverlap
+          const minArea = Math.min(ai.rect.width * ai.rect.height, dom.rect.width * dom.rect.height)
+          return minArea > 0 && overlapArea / minArea > 0.4 && (ai.category === 'typography' || dom.category === 'typography')
+        })
+      })
+
+      const newIssues: AuditIssue[] = [...domTypographyIssues, ...filteredAiIssues]
 
       setIssues(newIssues)
       setShowRightPanel(true)
@@ -657,6 +686,7 @@ export default function App() {
     activeObsidianMarkdown,
     activeObsidianTitle,
     implMeta,
+    designMeta,
     autoEnrichAnythingLlm,
     anythingLlmKey,
     anythingLlmWorkspace,
