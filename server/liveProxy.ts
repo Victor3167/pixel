@@ -85,15 +85,95 @@ function shouldRewriteToProxy(resolved: URL, pageOrigin: string): boolean {
   return resolved.origin === pageOrigin
 }
 
+function buildProxyBootstrapSnippet(target: URL, storage: Record<string, string>): string {
+  const targetOrigin = target.origin
+  const targetPath = `${target.pathname || '/'}${target.search || ''}${target.hash || ''}`
+  const storagePayload = JSON.stringify(storage).replace(/</g, '\\u003c')
+
+  return `
+<script id="pixel-audit-live-bootstrap">
+(function() {
+  try {
+    var d = ${storagePayload};
+    for (var k in d) {
+      if (Object.prototype.hasOwnProperty.call(d, k)) localStorage.setItem(k, String(d[k]));
+    }
+  } catch (e) {}
+
+  try {
+    // Synchronize SPA router pathname so it matches the target page instead of /api/live-proxy
+    window.history.replaceState(null, "", ${JSON.stringify(targetPath)});
+  } catch (e) {}
+
+  var targetOrigin = ${JSON.stringify(targetOrigin)};
+  function proxyUrl(val) {
+    if (typeof val === "string" && val.startsWith("/") && !val.startsWith("/api/live-proxy") && !val.startsWith("//")) {
+      return "/api/live-proxy?url=" + encodeURIComponent(targetOrigin + val);
+    }
+    return val;
+  }
+
+  // Intercept window.fetch for dynamic asset / API requests
+  var origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    return origFetch.call(this, proxyUrl(url), opts);
+  };
+
+  // Intercept XMLHttpRequest for legacy/XHR requests
+  var origOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url, ...args) {
+    return origOpen.call(this, method, proxyUrl(url), ...args);
+  };
+
+  // Intercept setAttribute for dynamically inserted elements
+  var origSetAttribute = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function(name, val) {
+    if (name === "src" || name === "href") {
+      val = proxyUrl(val);
+    }
+    return origSetAttribute.call(this, name, val);
+  };
+
+  // Intercept property setter on HTMLImageElement so React/SPA img tags load correctly
+  var imgDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
+  if (imgDesc && imgDesc.set) {
+    var origSetSrc = imgDesc.set;
+    Object.defineProperty(HTMLImageElement.prototype, "src", {
+      set: function(val) {
+        return origSetSrc.call(this, proxyUrl(val));
+      },
+      get: imgDesc.get,
+      configurable: true,
+      enumerable: true
+    });
+  }
+})();
+</script>
+<style id="pixel-audit-live-style">
+  @media (min-height: 1200px) {
+    /* Prevent vertically centered screens (like login forms or 404s) from centering at Y=9000px inside oversized virtual scroll containers */
+    .min-h-screen.items-center,
+    .min-h-screen.justify-center,
+    [class*="min-h-screen"][class*="justify-center"],
+    [class*="min-h-screen"][class*="items-center"] {
+      min-height: 850px !important;
+      justify-content: flex-start !important;
+      padding-top: 60px !important;
+    }
+  }
+</style>
+`
+}
+
 function rewriteHtmlForProxy(html: string, pageUrl: URL, storage: Record<string, string>): string {
-  const injectSnippet = buildStorageInjectScript(storage)
-  const withStorage =
-    injectSnippet.length > 0
-      ? html.replace(/<head(\s[^>]*)?>/i, (match) => `${match}${injectSnippet}`)
+  const bootstrapSnippet = buildProxyBootstrapSnippet(pageUrl, storage)
+  const withBootstrap =
+    bootstrapSnippet.length > 0
+      ? html.replace(/<head(\s[^>]*)?>/i, (match) => `${match}${bootstrapSnippet}`)
       : html
 
   const attrPattern = /\b(href|src)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi
-  return withStorage.replace(attrPattern, (full, attr: string, dq?: string, sq?: string, bare?: string) => {
+  return withBootstrap.replace(attrPattern, (full, attr: string, dq?: string, sq?: string, bare?: string) => {
     const value = dq ?? sq ?? bare ?? ''
     const resolved = resolveRelativeUrl(pageUrl, value)
     if (!resolved || !shouldRewriteToProxy(resolved, pageUrl.origin)) {
@@ -103,12 +183,6 @@ function rewriteHtmlForProxy(html: string, pageUrl: URL, storage: Record<string,
     const quote = dq !== undefined ? '"' : sq !== undefined ? "'" : '"'
     return `${attr}=${quote}${proxied}${quote}`
   })
-}
-
-function buildStorageInjectScript(storage: Record<string, string>): string {
-  if (Object.keys(storage).length === 0) return ''
-  const payload = JSON.stringify(storage).replace(/</g, '\\u003c')
-  return `<script id="pixel-audit-live-storage">(function(){try{var d=${payload};for(var k in d){if(Object.prototype.hasOwnProperty.call(d,k))localStorage.setItem(k,String(d[k]));}}catch(e){}})();</script>`
 }
 
 async function fetchUpstream(target: URL, req: IncomingMessage): Promise<Response> {
@@ -138,7 +212,19 @@ export async function handleLiveProxy(req: IncomingMessage, res: ServerResponse)
 
   try {
     const requestUrl = new URL(req.url ?? '/', 'http://pixel-audit.local')
-    const targetRaw = requestUrl.searchParams.get('url')
+    let targetRaw = requestUrl.searchParams.get('url')
+    if (!targetRaw?.trim() && req.headers.referer) {
+      try {
+        const refUrl = new URL(req.headers.referer)
+        const refTarget = refUrl.searchParams.get('url')
+        if (refTarget) {
+          const parentTarget = new URL(refTarget)
+          targetRaw = new URL(requestUrl.pathname + requestUrl.search, parentTarget.origin).toString()
+        }
+      } catch {
+        /* ignore */
+      }
+    }
     if (!targetRaw?.trim()) {
       throw new HttpError(400, 'Query parameter "url" is required')
     }
@@ -172,7 +258,8 @@ export async function handleLiveProxy(req: IncomingMessage, res: ServerResponse)
 
     let html = await upstream.text()
     if (upstream.ok) {
-      html = rewriteHtmlForProxy(html, target, storage)
+      const finalTarget = new URL(upstream.url || target.toString())
+      html = rewriteHtmlForProxy(html, finalTarget, storage)
     }
     const out = Buffer.from(html, 'utf8')
     res.setHeader('Content-Type', contentType.includes('charset') ? contentType : 'text/html; charset=utf-8')

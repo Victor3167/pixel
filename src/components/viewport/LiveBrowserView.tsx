@@ -272,6 +272,10 @@ export function LiveBrowserView({
 
   /** Quick auto-login into prototype A using known token */
   const handleAutoLoginOptionA = useCallback(() => {
+    if (fullUrlA.includes('lojasilvasalesdesign')) {
+      onAddToast('info', 'No protótipo Silva Sales, faça o login fornecido pela Bis2Bis diretamente no formulário do Lado A.')
+      return
+    }
     try {
       const frame = document.getElementById('live-frame-a') as HTMLIFrameElement | null
       if (frame && frame.contentWindow) {
@@ -291,7 +295,7 @@ export function LiveBrowserView({
     } catch {
       onAddToast('info', 'Você pode fazer login digitando seus dados diretamente na Página A.')
     }
-  }, [onUpdateDesignSettings, onAddToast])
+  }, [fullUrlA, onUpdateDesignSettings, onAddToast])
 
   /* -------------------------- Keyboard Navigation -------------------------- */
   useEffect(() => {
